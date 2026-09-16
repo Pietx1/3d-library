@@ -5206,8 +5206,6 @@ async function saveQueueEntry() {
 
                             size,
 
-                            notes,
-
                             position:
                                 nextPosition
 
@@ -5452,24 +5450,6 @@ function createQueueRow(
                 )}
 
             </span>
-
-            ${
-                entry.notes
-                    ? `
-                        <div class="queue-notes-visible">
-                            <strong>Hinweis</strong>
-                            <div>
-                                ${escapeHTML(
-                                    entry.notes
-                                ).replace(
-                                    /\n/g,
-                                    "<br>"
-                                )}
-                            </div>
-                        </div>
-                    `
-                    : ""
-            }
 
         </div>
 
@@ -7350,3 +7330,176 @@ async function boot() {
    ========================================================= */
 
 boot();
+
+
+/* =========================================================
+   TAG-LEISTE SCROLLEN – PC
+   ========================================================= */
+
+(() => {
+
+    const strip =
+        document.getElementById(
+            "tagFilterList"
+        );
+
+    if (!strip) {
+        return;
+    }
+
+    let dragging = false;
+    let startX = 0;
+    let startScrollLeft = 0;
+    let moved = false;
+
+    strip.addEventListener(
+        "wheel",
+        event => {
+
+            if (
+                strip.scrollWidth <=
+                strip.clientWidth
+            ) {
+                return;
+            }
+
+            const vertical =
+                Math.abs(event.deltaY);
+
+            const horizontal =
+                Math.abs(event.deltaX);
+
+            if (
+                vertical > horizontal
+            ) {
+
+                strip.scrollLeft +=
+                    event.deltaY;
+
+                event.preventDefault();
+
+            }
+
+        },
+        {
+            passive: false
+        }
+    );
+
+    strip.addEventListener(
+        "pointerdown",
+        event => {
+
+            if (
+                event.pointerType !== "mouse"
+            ) {
+                return;
+            }
+
+            dragging =
+                true;
+
+            moved =
+                false;
+
+            startX =
+                event.clientX;
+
+            startScrollLeft =
+                strip.scrollLeft;
+
+            strip.classList.add(
+                "is-dragging"
+            );
+
+            strip.setPointerCapture(
+                event.pointerId
+            );
+
+        }
+    );
+
+    strip.addEventListener(
+        "pointermove",
+        event => {
+
+            if (
+                !dragging ||
+                event.pointerType !== "mouse"
+            ) {
+                return;
+            }
+
+            const distance =
+                event.clientX -
+                startX;
+
+            if (
+                Math.abs(distance) > 4
+            ) {
+                moved =
+                    true;
+            }
+
+            strip.scrollLeft =
+                startScrollLeft -
+                distance;
+
+        }
+    );
+
+    const stopDragging =
+        event => {
+
+            if (!dragging) {
+                return;
+            }
+
+            dragging =
+                false;
+
+            strip.classList.remove(
+                "is-dragging"
+            );
+
+            try {
+                strip.releasePointerCapture(
+                    event.pointerId
+                );
+            } catch {}
+
+        };
+
+    strip.addEventListener(
+        "pointerup",
+        stopDragging
+    );
+
+    strip.addEventListener(
+        "pointercancel",
+        stopDragging
+    );
+
+    /*
+     * Wenn wirklich gezogen wurde, soll daraus nicht
+     * versehentlich noch ein Tag-Klick werden.
+     */
+    strip.addEventListener(
+        "click",
+        event => {
+
+            if (!moved) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            moved =
+                false;
+
+        },
+        true
+    );
+
+})();

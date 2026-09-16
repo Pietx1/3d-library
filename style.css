@@ -4149,3 +4149,60 @@ button {
         display: none;
     }
 }
+
+
+/* =====================================================
+   TAG-LEISTE – PC HORIZONTAL SCROLL
+   ===================================================== */
+
+@media (min-width: 701px) {
+
+    .filter-left {
+        flex: 1 1 auto;
+        min-width: 0;
+        max-width: 100%;
+        overflow: hidden;
+    }
+
+    .tag-list {
+        flex: 1 1 0;
+        width: 0;
+        min-width: 0;
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        white-space: nowrap;
+        cursor: grab;
+        touch-action: pan-x;
+        scrollbar-width: thin;
+        scrollbar-color: #c8c8ce transparent;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .tag-list:active {
+        cursor: grabbing;
+    }
+
+    .tag-list::-webkit-scrollbar {
+        height: 7px;
+    }
+
+    .tag-list::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .tag-list::-webkit-scrollbar-thumb {
+        background: #c8c8ce;
+        border-radius: 999px;
+    }
+
+    .tag-list::-webkit-scrollbar-thumb:hover {
+        background: #a9a9af;
+    }
+
+    .filter-right {
+        flex: 0 0 auto;
+    }
+
+}
+
