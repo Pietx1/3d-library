@@ -23,6 +23,10 @@ const SUPABASE_PUBLISHABLE_KEY =
     "sb_publishable_AABIUgvFSeK4GEGpUqQg2Q_MV5F1PV6";
 
 
+const AUTH_REDIRECT_URL =
+    "https://pietx1.github.io/3d-library/";
+
+
 const supabase =
     createClient(
         SUPABASE_URL,
@@ -32,6 +36,7 @@ const supabase =
                 autoRefreshToken: true,
                 persistSession: true,
                 detectSessionInUrl: true,
+                flowType: "pkce",
                 experimental: {
                     passkey: true
                 }
@@ -476,7 +481,36 @@ function showToast(
    AUTH
    ========================================================= */
 
-async function ensureAuth() {
+async function handleAuthCallback() {
+
+    const url =
+        new URL(window.location.href);
+
+    const code =
+        url.searchParams.get("code");
+
+    if (code) {
+
+        const {
+            data,
+            error
+        } =
+            await supabase.auth.exchangeCodeForSession(code);
+
+        if (error) {
+            throw error;
+        }
+
+        if (data?.session?.user) {
+            history.replaceState(
+                {},
+                document.title,
+                AUTH_REDIRECT_URL
+            );
+
+            return data.session.user;
+        }
+    }
 
     const {
         data: {
@@ -485,14 +519,49 @@ async function ensureAuth() {
     } =
         await supabase.auth.getSession();
 
+    if (session?.user) {
+
+        const hasAuthParams =
+            url.searchParams.has("code") ||
+            url.hash.includes("access_token=") ||
+            url.hash.includes("refresh_token=");
+
+        if (hasAuthParams) {
+            history.replaceState(
+                {},
+                document.title,
+                AUTH_REDIRECT_URL
+            );
+        }
+
+        return session.user;
+    }
+
+    return null;
+}
+
+
+async function ensureAuth() {
+
+    const callbackUser =
+        await handleAuthCallback();
+
+    if (callbackUser) {
+        return callbackUser;
+    }
+
+    const {
+        data: {
+            session
+        }
+    } =
+        await supabase.auth.getSession();
 
     if (session?.user) {
         return session.user;
     }
 
-
     return null;
-
 }
 
 
@@ -776,7 +845,7 @@ async function handleSendAuthEmail() {
 
 
             setAuthStatus(
-                "Fast geschafft. Öffne die Bestätigungs-E-Mail und rufe danach diese Seite erneut auf. Anschließend kannst du deinen Passkey registrieren.",
+                "Fast geschafft. Öffne die Bestätigungs-E-Mail. Danach die Home-Bildschirm-App erneut öffnen und den Passkey registrieren.",
                 "success"
             );
 
@@ -794,7 +863,7 @@ async function handleSendAuthEmail() {
 
 
         const redirectUrl =
-            `${window.location.origin}${window.location.pathname}`;
+            AUTH_REDIRECT_URL;
 
 
         const {
@@ -814,7 +883,7 @@ async function handleSendAuthEmail() {
 
 
         setAuthStatus(
-            "E-Mail-Link gesendet. Öffne ihn auf diesem Gerät. Danach wird dein Account automatisch erkannt.",
+            "E-Mail-Link gesendet. Öffne ihn zum Bestätigen. Danach diese Home-Bildschirm-App erneut öffnen und mit deinem Passkey anmelden.",
             "success"
         );
 
@@ -7188,6 +7257,24 @@ window.addEventListener(
             "Internetverbindung wiederhergestellt."
         );
 
+    }
+);
+
+
+/* =========================================================
+   AUTH SESSION EVENTS
+   ========================================================= */
+
+supabase.auth.onAuthStateChange(
+    (event, session) => {
+
+        if (!session?.user) {
+            currentUser = null;
+            return;
+        }
+
+        currentUser =
+            session.user;
     }
 );
 
