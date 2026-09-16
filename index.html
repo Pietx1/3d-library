@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    >
+
+    <title>3D Library</title>
+
+    <meta name="theme-color" content="#f5f5f7">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="3D Library">
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+
+</head>
+
+
+<body>
+
+
+    <!-- =====================================================
+         SIDEBAR
+    ====================================================== -->
+
+    <aside class="sidebar">
+
+        <div class="logo">
+
+            <div class="logo-icon">
+                3D
+            </div>
+
+            <div class="logo-text">
+
+                <strong>
+                    3D Library
+                </strong>
+
+                <span>
+                    My Models
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <nav>
+
+            <button
+                class="nav-button active"
+                id="libraryNav"
+                type="button"
+            >
+
+                <span class="nav-icon">
+                    ▦
+                </span>
+
+                <span>
+                    Bibliothek
+                </span>
+
+            </button>
+
+
+            <button
+                class="nav-button"
+                id="queueNav"
+                type="button"
+            >
+
+                <span class="nav-icon">
+                    ☷
+                </span>
+
+                <span class="nav-label">
+                    Druckwarteschlange
+                </span>
+
+                <span
+                    class="queue-badge"
+                    id="queueBadge"
+                >
+                    0
+                </span>
+
+            </button>
+
+        </nav>
+
+
+        <div class="sidebar-bottom">
+
+            <div class="sidebar-status">
+
+                <span class="status-dot"></span>
+
+                Lokal gespeichert
+
+            </div>
+
+        </div>
+
+    </aside>
+
+
+
+    <!-- =====================================================
+         APP
+    ====================================================== -->
+
+    <div class="app">
+
+
+        <!-- =================================================
+             TOPBAR
+        ================================================== -->
+
+        <header class="topbar">
+
+            <div class="mobile-topbar">
+
+                <div class="mobile-brand">
+
+                    <div class="logo-icon">
+                        3D
+                    </div>
+
+                    <span>
+                        3D Library
+                    </span>
+
+                </div>
+
+
+                <button
+                    class="mobile-nav-button active"
+                    id="mobileLibraryNav"
+                    type="button"
+                >
+                    Bibliothek
+                </button>
+
+
+                <button
+                    class="mobile-nav-button"
+                    id="mobileQueueNav"
+                    type="button"
+                >
+                    Warteschlange
+                </button>
+
+            </div>
+
+
+            <div class="search-wrapper">
+
+                <span class="search-icon">
+                    ⌕
+                </span>
+
+
+                <input
+                    id="searchInput"
+                    type="text"
+                    placeholder="Modelle suchen..."
+                    autocomplete="off"
+                >
+
+
+                <span class="search-shortcut">
+                    /
+                </span>
+
+            </div>
+
+        </header>
+
+
+
+        <!-- =================================================
+             CONTENT
+        ================================================== -->
+
+        <main class="content">
+
+
+            <!-- =================================================
+                 BIBLIOTHEK
+            ================================================== -->
+
+            <section id="libraryPage">
+
+
+                <div class="page-heading">
+
+                    <p class="eyebrow">
+                        DEINE SAMMLUNG
+                    </p>
+
+
+                    <h1>
+                        3D Modelle
+                    </h1>
+
+
+                    <p class="page-description">
+                        Verwalte deine 3MF-Dateien an einem Ort.
+                    </p>
+
+                </div>
+
+
+
+                <!-- FILTER -->
+
+                <div class="filter-area">
+
+
+                    <div class="filter-left">
+
+                        <span class="filter-title">
+                            Tags
+                        </span>
+
+
+                        <div
+                            class="tag-list"
+                            id="tagFilterList"
+                        >
+                        </div>
+
+
+                        <button
+                            class="add-tag-button"
+                            id="addTagButton"
+                            type="button"
+                            title="Tag erstellen"
+                        >
+                            +
+                        </button>
+
+
+                        <button
+                            class="manage-tags-button"
+                            id="manageTagsButton"
+                            type="button"
+                        >
+                            Verwalten
+                        </button>
+
+                    </div>
+
+
+                    <div class="filter-right">
+
+                        <span
+                            class="model-count"
+                            id="modelCount"
+                        >
+                            0 Modelle
+                        </span>
+
+
+                        <select
+                            class="sort-select"
+                            id="sortSelect"
+                        >
+
+                            <option value="newest">
+                                Zuletzt hinzugefügt
+                            </option>
+
+                            <option value="oldest">
+                                Älteste zuerst
+                            </option>
+
+                            <option value="az">
+                                Name A–Z
+                            </option>
+
+                            <option value="za">
+                                Name Z–A
+                            </option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- =================================================
+                     UPLOAD
+                ================================================== -->
+
+                <div
+                    class="drop-zone"
+                    id="dropZone"
+                    role="button"
+                    tabindex="0"
+                >
+
+                    <div class="drop-icon">
+                        ↑
+                    </div>
+
+
+                    <div class="drop-text">
+
+                        <strong>
+                            3MF-Dateien hier hineinziehen
+                        </strong>
+
+                        <span>
+                            oder irgendwo hier klicken, um Dateien auszuwählen
+                        </span>
+
+                    </div>
+
+
+                    <button
+                        class="secondary-button"
+                        id="dropUploadButton"
+                        type="button"
+                    >
+                        Dateien auswählen
+                    </button>
+
+
+                    <input
+                        type="file"
+                        id="fileInput"
+                        accept=".3mf"
+                        multiple
+                        hidden
+                    >
+
+                </div>
+
+
+
+                <!-- =================================================
+                     MODEL GRID
+                ================================================== -->
+
+                <div
+                    class="model-grid"
+                    id="modelGrid"
+                >
+                </div>
+
+
+
+                <!-- =================================================
+                     EMPTY
+                ================================================== -->
+
+                <div
+                    class="empty-state"
+                    id="emptyState"
+                >
+
+                    <div class="empty-icon">
+                        3D
+                    </div>
+
+
+                    <h2>
+                        Noch keine Modelle
+                    </h2>
+
+
+                    <p>
+                        Füge deine ersten 3MF-Dateien hinzu.
+                    </p>
+
+                </div>
+
+            </section>
+
+
+
+            <!-- =================================================
+                 DRUCKWARTESCHLANGE
+            ================================================== -->
+
+            <section
+                id="queuePage"
+                class="hidden"
+            >
+
+
+                <div class="page-heading">
+
+                    <p class="eyebrow">
+                        ALS NÄCHSTES
+                    </p>
+
+
+                    <h1>
+                        Druckwarteschlange
+                    </h1>
+
+
+                    <p class="page-description">
+                        Ordne deine Drucke, Mengen und Größen.
+                    </p>
+
+                </div>
+
+
+                <div
+                    class="queue-header"
+                    id="queueHeader"
+                >
+
+                    <div
+                        class="queue-summary"
+                        id="queueSummary"
+                    >
+                    </div>
+
+
+                    <button
+                        class="queue-clear-button"
+                        id="clearQueueButton"
+                        type="button"
+                    >
+                        Alles leeren
+                    </button>
+
+                </div>
+
+
+                <div
+                    class="queue-page-list"
+                    id="queuePageList"
+                >
+                </div>
+
+
+                <div
+                    class="queue-empty"
+                    id="queueEmpty"
+                >
+
+                    <div class="empty-icon">
+                        ✓
+                    </div>
+
+
+                    <h2>
+                        Warteschlange ist leer
+                    </h2>
+
+
+                    <p>
+                        Füge Modelle aus deiner Bibliothek hinzu.
+                    </p>
+
+                </div>
+
+            </section>
+
+        </main>
+
+    </div>
+
+
+
+    <!-- =====================================================
+         AUTH / PASSKEY
+    ====================================================== -->
+
+    <div
+        class="modal hidden"
+        id="authModal"
+        aria-modal="true"
+        role="dialog"
+    >
+
+        <div class="auth-card">
+
+            <div class="auth-brand">
+                <div class="logo-icon">3D</div>
+                <div>
+                    <strong>3D Library</strong>
+                    <span>Deine Cloud-Bibliothek</span>
+                </div>
+            </div>
+
+            <div class="auth-heading">
+                <p class="eyebrow">ZUGRIFF</p>
+                <h2 id="authTitle">Mit Passkey anmelden</h2>
+                <p id="authDescription">
+                    Nutze Face ID, Touch ID, Windows Hello oder den Passkey deines Geräts.
+                </p>
+            </div>
+
+            <button
+                class="primary-button auth-passkey-button"
+                id="passkeySignInButton"
+                type="button"
+            >
+                Mit Passkey anmelden
+            </button>
+
+            <button
+                class="primary-button hidden"
+                id="passkeyRegisterButton"
+                type="button"
+            >
+                Passkey registrieren
+            </button>
+
+            <button
+                class="secondary-button auth-setup-button"
+                id="openEmailSetupButton"
+                type="button"
+            >
+                Gerät einmalig einrichten
+            </button>
+
+            <div
+                class="auth-email-area hidden"
+                id="authEmailArea"
+            >
+
+                <label class="form-label" for="authEmailInput">
+                    E-Mail-Adresse – nur zur einmaligen Einrichtung
+                </label>
+
+                <input
+                    id="authEmailInput"
+                    class="modal-input"
+                    type="email"
+                    autocomplete="email"
+                    placeholder="deine@email.de"
+                >
+
+                <button
+                    class="primary-button"
+                    id="sendAuthEmailButton"
+                    type="button"
+                >
+                    E-Mail-Link senden
+                </button>
+
+                <p class="auth-help" id="authHelpText">
+                    Auf deinem ersten Gerät wird die vorhandene anonyme Library mit dieser Adresse verknüpft. Danach kannst du einen Passkey registrieren.
+                </p>
+
+            </div>
+
+            <div
+                class="auth-status"
+                id="authStatus"
+            ></div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- =====================================================
+         3D VIEWER
+    ====================================================== -->
+
+    <div
+        class="modal hidden"
+        id="viewerModal"
+    >
+
+        <div
+            class="modal-backdrop"
+            data-close="viewer"
+        ></div>
+
+
+        <div class="viewer-window">
+
+            <div class="viewer-header">
+
+                <div>
+
+                    <span class="viewer-label">
+                        3D VIEWER
+                    </span>
+
+
+                    <h2 id="viewerTitle">
+                        Modell
+                    </h2>
+
+                </div>
+
+
+                <button
+                    class="close-button"
+                    id="closeViewer"
+                    type="button"
+                >
+                    ×
+                </button>
+
+            </div>
+
+
+            <div
+                class="viewer-container"
+                id="viewerContainer"
+            >
+
+                <div
+                    class="viewer-loading"
+                    id="viewerLoading"
+                >
+                    3D-Modell wird geladen...
+                </div>
+
+
+                <div
+                    class="viewer-error hidden"
+                    id="viewerError"
+                >
+                </div>
+
+            </div>
+
+
+            <div class="viewer-controls">
+
+                <span class="desktop-control">
+                    Linke Maustaste = drehen
+                </span>
+
+                <span class="desktop-control">
+                    Mittlere Maustaste = drehen
+                </span>
+
+                <span class="desktop-control">
+                    Rechte Maustaste = verschieben
+                </span>
+
+                <span class="desktop-control">
+                    Mausrad = zoomen
+                </span>
+
+                <span class="mobile-control">
+                    1 Finger = drehen
+                </span>
+
+                <span class="mobile-control">
+                    2 Finger = verschieben / zoomen
+                </span>
+
+
+                <button
+                    class="viewer-reset"
+                    id="resetViewer"
+                    type="button"
+                >
+                    Ansicht zurücksetzen
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- =====================================================
+         TAG ERSTELLEN
+    ====================================================== -->
+
+    <div
+        class="modal hidden"
+        id="tagModal"
+    >
+
+        <div
+            class="modal-backdrop"
+            data-close="tag"
+        ></div>
+
+
+        <div class="small-modal">
+
+            <div class="small-modal-header">
+
+                <div>
+
+                    <span class="viewer-label">
+                        TAGS
+                    </span>
+
+
+                    <h2>
+                        Neuen Tag erstellen
+                    </h2>
+
+                </div>
+
+
+                <button
+                    class="close-button light-close"
+                    id="closeTagModal"
+                    type="button"
+                >
+                    ×
+                </button>
+
+            </div>
+
+
+            <input
+                id="tagInput"
+                class="modal-input"
+                type="text"
+                maxlength="40"
+                placeholder="z. B. Deko"
+                autocomplete="off"
+            >
+
+
+            <div class="modal-actions">
+
+                <button
+                    class="secondary-button"
+                    id="cancelTag"
+                    type="button"
+                >
+                    Abbrechen
+                </button>
+
+
+                <button
+                    class="primary-button"
+                    id="saveTag"
+                    type="button"
+                >
+                    Tag erstellen
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- =====================================================
+         TAGS VERWALTEN
+    ====================================================== -->
+
+    <div
+        class="modal hidden"
+        id="manageTagsModal"
+    >
+
+        <div
+            class="modal-backdrop"
+            data-close="manageTags"
+        ></div>
+
+
+        <div class="manage-tags-modal">
+
+            <div class="small-modal-header">
+
+                <div>
+
+                    <span class="viewer-label">
+                        BIBLIOTHEK
+                    </span>
+
+
+                    <h2>
+                        Tags verwalten
+                    </h2>
+
+                </div>
+
+
+                <button
+                    class="close-button light-close"
+                    id="closeManageTags"
+                    type="button"
+                >
+                    ×
+                </button>
+
+            </div>
+
+
+            <div
+                class="managed-tag-list"
+                id="managedTagList"
+            >
+            </div>
+
+
+            <div
+                class="no-tags-message"
+                id="noTagsMessage"
+            >
+                Du hast noch keine eigenen Tags erstellt.
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- =====================================================
+         MODELL BEARBEITEN
+    ====================================================== -->
+
+    <div
+        class="modal hidden"
+        id="editModelModal"
+    >
+
+        <div
+            class="modal-backdrop"
+            data-close="editModel"
+        ></div>
+
+
+        <div class="edit-modal">
+
+            <div class="small-modal-header">
+
+                <div>
+
+                    <span class="viewer-label">
+                        MODELL
+                    </span>
+
+
+                    <h2>
+                        Modell bearbeiten
+                    </h2>
+
+                </div>
+
+
+                <button
+                    class="close-button light-close"
+                    id="closeEditModel"
+                    type="button"
+                >
+                    ×
+                </button>
+
+            </div>
+
+
+            <label class="form-label">
+                Anzeigename
+            </label>
+
+
+            <input
+                id="editNameInput"
+                class="modal-input"
+                type="text"
+                maxlength="100"
+            >
+
+
+            <label class="form-label">
+                Tags
+            </label>
+
+
+            <div
+                class="edit-tag-grid"
+                id="editTagGrid"
+            >
+            </div>
+
+
+            <label class="form-label">
+                3MF-Datei ersetzen
+            </label>
+
+
+            <div class="replace-file-box">
+
+                <input
+                    id="replaceFileInput"
+                    type="file"
+                    accept=".3mf"
+                >
+
+
+                <span>
+                    Name und Tags bleiben erhalten.
+                </span>
+
+            </div>
+
+
+            <div class="modal-actions">
+
+                <button
+                    class="secondary-button"
+                    id="cancelEditModel"
+                    type="button"
+                >
+                    Abbrechen
+                </button>
+
+
+                <button
+                    class="primary-button"
+                    id="saveEditModel"
+                    type="button"
+                >
+                    Änderungen speichern
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- =====================================================
+         DRUCK HINZUFÜGEN / BEARBEITEN
+    ====================================================== -->
+
+    <div
+        class="modal hidden"
+        id="queueEntryModal"
+    >
+
+        <div
+            class="modal-backdrop"
+            data-close="queueEntry"
+        ></div>
+
+
+        <div class="small-modal">
+
+            <div class="small-modal-header">
+
+                <div>
+
+                    <span class="viewer-label">
+                        DRUCKWARTESCHLANGE
+                    </span>
+
+
+                    <h2 id="queueModalTitle">
+                        Druck hinzufügen
+                    </h2>
+
+                </div>
+
+
+                <button
+                    class="close-button light-close"
+                    id="closeQueueEntry"
+                    type="button"
+                >
+                    ×
+                </button>
+
+            </div>
+
+
+            <div
+                class="quantity-model-name"
+                id="queueEntryModelName"
+            >
+                Modell
+            </div>
+
+
+            <label class="form-label">
+                Anzahl
+            </label>
+
+
+            <input
+                id="quantityInput"
+                class="modal-input quantity-input"
+                type="number"
+                min="1"
+                max="999"
+                value="1"
+            >
+
+
+            <!-- GRÖSSE -->
+
+            <div
+                class="queue-size-area hidden"
+                id="queueSizeArea"
+            >
+
+                <label class="form-label">
+                    Größe
+                </label>
+
+
+                <div
+                    class="queue-size-presets"
+                    id="queueSizePresets"
+                >
+                </div>
+
+
+                <div class="custom-size-row">
+
+                    <div class="size-input-wrapper">
+
+                        <input
+                            id="customSizeInput"
+                            class="modal-input"
+                            type="text"
+                            maxlength="30"
+                            placeholder="Eigene Größe"
+                        >
+
+
+                        <button
+                            id="unitToggleButton"
+                            class="unit-toggle active"
+                            type="button"
+                        >
+                            cm
+                        </button>
+
+                    </div>
+
+
+                    <button
+                        id="savePresetSizeButton"
+                        class="secondary-button size-save-button"
+                        type="button"
+                        title="Größe für dieses Modell speichern"
+                    >
+                        +
+                    </button>
+
+                </div>
+
+
+                <p class="size-help">
+                    Eine vorhandene Größe wählen oder eine eigene eingeben.
+                    Mit + wird sie für dieses Modell gespeichert.
+                </p>
+
+            </div>
+
+
+            <div class="modal-actions">
+
+                <button
+                    class="secondary-button"
+                    id="cancelQueueEntry"
+                    type="button"
+                >
+                    Abbrechen
+                </button>
+
+
+                <button
+                    class="primary-button"
+                    id="saveQueueEntry"
+                    type="button"
+                >
+                    Zur Warteschlange
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- =====================================================
+         TOASTS
+    ====================================================== -->
+
+    <div
+        class="toast-container"
+        id="toastContainer"
+    ></div>
+
+
+
+    <!-- =====================================================
+         LIBRARIES
+    ====================================================== -->
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"
+        }
+    }
+    </script>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+
+    <script
+        type="module"
+        src="script.js"
+    ></script>
+
+</body>
+
+</html>
