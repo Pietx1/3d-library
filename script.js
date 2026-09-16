@@ -36,7 +36,6 @@ const supabase =
                 autoRefreshToken: true,
                 persistSession: true,
                 detectSessionInUrl: true,
-                flowType: "pkce",
                 experimental: {
                     passkey: true
                 }
@@ -483,44 +482,16 @@ function showToast(
 
 async function handleAuthCallback() {
 
-    const url =
-        new URL(window.location.href);
-
-    const code =
-        url.searchParams.get("code");
-
-    if (code) {
-
-        const {
-            data,
-            error
-        } =
-            await supabase.auth.exchangeCodeForSession(code);
-
-        if (error) {
-            throw error;
-        }
-
-        if (data?.session?.user) {
-            history.replaceState(
-                {},
-                document.title,
-                AUTH_REDIRECT_URL
-            );
-
-            return data.session.user;
-        }
-    }
-
+    // Supabase verarbeitet den E-Mail-Callback im Browser automatisch.
+    // Wir lesen danach nur die vorhandene Session aus.
     const {
         data: {
             session
         }
-    } =
-        await supabase.auth.getSession();
+    } = await supabase.auth.getSession();
 
     if (session?.user) {
-
+        const url = new URL(window.location.href);
         const hasAuthParams =
             url.searchParams.has("code") ||
             url.hash.includes("access_token=") ||
@@ -539,7 +510,6 @@ async function handleAuthCallback() {
 
     return null;
 }
-
 
 async function ensureAuth() {
 
@@ -609,10 +579,10 @@ function hideAuthModal() {
 async function showAnonymousSetup() {
 
     authTitle.textContent =
-        "Deine Library sichern";
+        "Einmalig im Browser einrichten";
 
     authDescription.textContent =
-        "Deine aktuelle Library ist noch anonym. Verknüpfe sie einmalig mit deiner E-Mail und registriere danach einen Passkey. Deine bisherigen Modelle bleiben dabei erhalten.";
+        "Die Home-Bildschirm-App verwendet für die Anmeldung nur deinen Passkey. Die E-Mail-Einrichtung machst du einmalig in Safari.";
 
     passkeySignInButton.classList.add(
         "hidden"
@@ -626,15 +596,18 @@ async function showAnonymousSetup() {
         "hidden"
     );
 
+    openEmailSetupButton.textContent =
+        "Einrichtung in Safari öffnen";
+
     authEmailArea.classList.add(
         "hidden"
     );
 
     authHelpText.textContent =
-        "Die E-Mail wird nur einmal benötigt, damit dein Supabase-Account geräteübergreifend wiedergefunden werden kann.";
+        "Öffne die 3D Library in Safari, verknüpfe dort einmalig deine E-Mail und registriere anschließend deinen Passkey. Danach kannst du die Home-Bildschirm-App ausschließlich mit Face ID/Passkey verwenden.";
 
     setAuthStatus(
-        "Noch nicht gesichert – die Bibliothek funktioniert weiter, bis du sie einmalig verknüpfst.",
+        "Für die Home-Bildschirm-App ist keine E-Mail-Anmeldung vorgesehen.",
         "info"
     );
 
@@ -642,14 +615,13 @@ async function showAnonymousSetup() {
 
 }
 
-
 async function showSignedOutAuth() {
 
     authTitle.textContent =
         "Mit Passkey anmelden";
 
     authDescription.textContent =
-        "Nutze Face ID, Touch ID, Windows Hello oder den Passkey deines Geräts.";
+        "In der Home-Bildschirm-App meldest du dich mit Face ID, Touch ID oder deinem Passkey an.";
 
     passkeySignInButton.classList.remove(
         "hidden"
@@ -659,16 +631,13 @@ async function showSignedOutAuth() {
         "hidden"
     );
 
-    openEmailSetupButton.classList.remove(
+    openEmailSetupButton.classList.add(
         "hidden"
     );
 
     authEmailArea.classList.add(
         "hidden"
     );
-
-    authHelpText.textContent =
-        "Wenn du diese App vom Home-Bildschirm öffnest, zuerst den Passkey verwenden. So brauchst du auf dem iPhone keinen neuen E-Mail-Link. Die E-Mail ist nur die einmalige Fallback-Anmeldung.";
 
     setAuthStatus(
         "",
@@ -678,7 +647,6 @@ async function showSignedOutAuth() {
     showAuthModal();
 
 }
-
 
 async function showPasskeyRegistration(user) {
 
@@ -1157,14 +1125,18 @@ openEmailSetupButton.addEventListener(
     "click",
     () => {
 
-        authEmailArea.classList.remove(
-            "hidden"
-        );
+        // iOS does not reliably route a magic-link back into a
+        // Home-Screen web app. The email setup therefore happens
+        // deliberately in Safari.
+        const browserUrl =
+            "https://pietx1.github.io/3d-library/";
 
-        setTimeout(
-            () => authEmailInput.focus(),
-            30
-        );
+        const opened =
+            window.open(browserUrl, "_blank");
+
+        if (!opened) {
+            window.location.href = browserUrl;
+        }
 
     }
 );
