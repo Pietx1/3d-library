@@ -1846,6 +1846,72 @@ function renderModels() {
 
 
 /* =========================================================
+   PREVIEW-FALLBACK
+   ========================================================= */
+
+function attachPreviewFallback(
+    image,
+    model
+) {
+
+    image.addEventListener(
+        "error",
+        async () => {
+
+            if (
+                image.dataset.previewRetried === "1" ||
+                !model.previewPath
+            ) {
+                return;
+            }
+
+            image.dataset.previewRetried = "1";
+
+            try {
+
+                const {
+                    data,
+                    error
+                } =
+                    await supabase
+                        .storage
+                        .from(PREVIEW_BUCKET)
+                        .createSignedUrl(
+                            model.previewPath,
+                            SIGNED_URL_SECONDS
+                        );
+
+                if (
+                    error ||
+                    !data?.signedUrl
+                ) {
+                    throw error || new Error("Keine Preview-URL erhalten.");
+                }
+
+                model.previewURL = data.signedUrl;
+                model.previewExpiresAt =
+                    Date.now() +
+                    (SIGNED_URL_SECONDS - 60) * 1000;
+
+                image.src = data.signedUrl;
+
+            } catch (error) {
+
+                console.warn(
+                    "Preview konnte nicht geladen werden:",
+                    error
+                );
+
+            }
+
+        },
+        { once: true }
+    );
+
+}
+
+
+/* =========================================================
    MODEL CARD
    ========================================================= */
 
@@ -2099,6 +2165,31 @@ function createModelCard(
                     model
                 )
         );
+
+
+    /*
+     * Preview-Fallback:
+     * Wenn Safari/Browser eine abgelaufene oder fehlende
+     * Signed URL meldet, wird einmalig eine neue URL angefordert.
+     */
+
+    const previewImage =
+        card.querySelector(
+            ".model-preview img"
+        );
+
+
+    if (
+        previewImage &&
+        model.previewPath
+    ) {
+
+        attachPreviewFallback(
+            previewImage,
+            model
+        );
+
+    }
 
 
     /*
@@ -6648,22 +6739,6 @@ async function boot() {
 
 
         await loadCloudData();
-
-        /*
-         * Auf dem Smartphone steht die Druckwarteschlange
-         * im Vordergrund. Die Bibliothek bleibt erreichbar,
-         * damit vorhandene Modelle weiterhin zur Queue
-         * hinzugefügt werden können.
-         */
-        if (
-            window.matchMedia(
-                "(max-width: 767px)"
-            ).matches
-        ) {
-
-            showQueue();
-
-        }
 
 
     } catch (
