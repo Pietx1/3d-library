@@ -4072,3 +4072,27 @@ button {
     }
 
 }
+
+
+/* =====================================================
+   MOBILE: WARTESCHLANGE IM VORDERGRUND
+   Upload und Verwaltungsfunktionen bleiben auf dem PC.
+   Die vorhandene Bibliothek bleibt auf dem iPhone
+   erreichbar, damit Modelle weiterhin zur Queue können.
+===================================================== */
+@media (max-width: 767px) {
+
+    #dropZone {
+        display: none !important;
+    }
+
+    #addTagButton,
+    #manageTagsButton {
+        display: none !important;
+    }
+
+    #queuePage {
+        width: 100%;
+    }
+
+}
