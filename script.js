@@ -7336,6 +7336,18 @@ boot();
    TAG-LEISTE SCROLLEN – PC
    ========================================================= */
 
+/*
+ * Wichtig:
+ * Die Tag-Leiste darf normale Klicks auf einzelne Tags
+ * NICHT abfangen. Deshalb verwenden wir hier bewusst
+ * normales Mouse-Handling ohne setPointerCapture().
+ *
+ * Ergebnis:
+ * - Klick auf Tag -> Tag wird ausgewählt
+ * - Linke Maustaste ziehen -> Leiste scrollt
+ * - Mausrad -> Leiste scrollt horizontal
+ */
+
 (() => {
 
     const strip =
@@ -7347,11 +7359,22 @@ boot();
         return;
     }
 
-    let dragging = false;
-    let startX = 0;
-    let startScrollLeft = 0;
-    let moved = false;
-    let suppressNextClick = false;
+
+    let dragging =
+        false;
+
+    let startX =
+        0;
+
+    let startScrollLeft =
+        0;
+
+    let moved =
+        false;
+
+    let suppressNextClick =
+        false;
+
 
     strip.addEventListener(
         "wheel",
@@ -7364,11 +7387,17 @@ boot();
                 return;
             }
 
+
             const vertical =
-                Math.abs(event.deltaY);
+                Math.abs(
+                    event.deltaY
+                );
 
             const horizontal =
-                Math.abs(event.deltaX);
+                Math.abs(
+                    event.deltaX
+                );
+
 
             if (
                 vertical > horizontal
@@ -7387,20 +7416,30 @@ boot();
         }
     );
 
+
     strip.addEventListener(
-        "pointerdown",
+        "mousedown",
         event => {
 
+            /*
+             * Nur linke Maustaste.
+             * Bei Rechtsklick/Mittelklick bleibt
+             * das normale Browser-Verhalten erhalten.
+             */
             if (
-                event.pointerType !== "mouse"
+                event.button !== 0
             ) {
                 return;
             }
+
 
             dragging =
                 true;
 
             moved =
+                false;
+
+            suppressNextClick =
                 false;
 
             startX =
@@ -7413,54 +7452,75 @@ boot();
                 "is-dragging"
             );
 
-            strip.setPointerCapture(
-                event.pointerId
-            );
-
         }
     );
 
-    strip.addEventListener(
-        "pointermove",
+
+    document.addEventListener(
+        "mousemove",
         event => {
 
             if (
-                !dragging ||
-                event.pointerType !== "mouse"
+                !dragging
             ) {
                 return;
             }
+
 
             const distance =
                 event.clientX -
                 startX;
 
+
             if (
-                Math.abs(distance) > 4
+                Math.abs(
+                    distance
+                ) > 4
             ) {
+
                 moved =
                     true;
+
             }
 
-            strip.scrollLeft =
-                startScrollLeft -
-                distance;
+
+            if (
+                moved
+            ) {
+
+                /*
+                 * Erst ab der tatsächlichen
+                 * Bewegung den Text/Tag-Klick
+                 * nicht mehr als Auswahl behandeln.
+                 */
+                event.preventDefault();
+
+                strip.scrollLeft =
+                    startScrollLeft -
+                    distance;
+
+            }
 
         }
     );
 
-    const stopDragging =
-        event => {
 
-            if (!dragging) {
+    document.addEventListener(
+        "mouseup",
+        () => {
+
+            if (
+                !dragging
+            ) {
                 return;
             }
 
-            suppressNextClick =
-                moved;
 
             dragging =
                 false;
+
+            suppressNextClick =
+                moved;
 
             moved =
                 false;
@@ -7469,37 +7529,31 @@ boot();
                 "is-dragging"
             );
 
-            try {
-                strip.releasePointerCapture(
-                    event.pointerId
-                );
-            } catch {}
-
-        };
-
-    strip.addEventListener(
-        "pointerup",
-        stopDragging
+        }
     );
 
-    strip.addEventListener(
-        "pointercancel",
-        stopDragging
-    );
 
     /*
-     * Wenn wirklich gezogen wurde, soll daraus nicht
-     * versehentlich noch ein Tag-Klick werden.
+     * Ein Klick nach einem echten Ziehen wird
+     * einmalig unterdrückt.
+     *
+     * Ein normaler Klick ohne Ziehen läuft
+     * vollständig bis zum eigentlichen Tag-Button
+     * durch und funktioniert daher wieder.
      */
     strip.addEventListener(
         "click",
         event => {
 
-            if (!suppressNextClick) {
+            if (
+                !suppressNextClick
+            ) {
                 return;
             }
 
+
             event.preventDefault();
+
             event.stopPropagation();
 
             suppressNextClick =
@@ -7510,3 +7564,4 @@ boot();
     );
 
 })();
+
