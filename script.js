@@ -227,6 +227,12 @@ const queueEntryModelName =
 const quantityInput =
     document.getElementById("quantityInput");
 
+const queueNotesInput =
+    document.getElementById("queueNotesInput");
+
+const queueNotesCounter =
+    document.getElementById("queueNotesCounter");
+
 const queueSizeArea =
     document.getElementById("queueSizeArea");
 
@@ -1637,6 +1643,7 @@ async function loadQueue() {
                 model_id,
                 quantity,
                 size,
+                notes,
                 position,
                 created_at
             `)
@@ -1683,6 +1690,9 @@ async function loadQueue() {
 
                 size:
                     row.size,
+
+                notes:
+                    row.notes || "",
 
                 position:
                     row.position,
@@ -4525,6 +4535,12 @@ function openQueueModal(
             : 1;
 
 
+    queueNotesInput.value =
+        existingEntry?.notes || "";
+
+    updateQueueNotesCounter();
+
+
     unitIsCentimeters =
         existingEntry?.size
             ? /cm$/i.test(
@@ -4946,6 +4962,34 @@ customSizeInput.addEventListener(
 );
 
 
+queueNotesInput.addEventListener(
+    "input",
+    updateQueueNotesCounter
+);
+
+queueNotesInput.addEventListener(
+    "keydown",
+    event => {
+        if (
+            (event.ctrlKey || event.metaKey) &&
+            event.key === "Enter"
+        ) {
+            event.preventDefault();
+            saveQueueEntry();
+        }
+    }
+);
+
+function updateQueueNotesCounter() {
+    if (!queueNotesCounter) {
+        return;
+    }
+
+    queueNotesCounter.textContent =
+        `${queueNotesInput.value.length} / 1000`;
+}
+
+
 async function saveQueueEntry() {
 
     if (
@@ -4989,6 +5033,10 @@ async function saveQueueEntry() {
     let size =
         null;
 
+    const notes =
+        queueNotesInput.value
+            .trim()
+            .slice(0, 1000);
 
     if (
         queueModel.variableSize
@@ -5026,11 +5074,9 @@ async function saveQueueEntry() {
                 await supabase
                     .from("print_queue")
                     .update({
-
                         quantity,
-
-                        size
-
+                        size,
+                        notes
                     })
                     .eq(
                         "id",
@@ -5053,6 +5099,9 @@ async function saveQueueEntry() {
             queueEntryForEdit.size =
                 size;
 
+            queueEntryForEdit.notes =
+                notes;
+
 
             showToast(
                 "Druckeintrag aktualisiert."
@@ -5070,7 +5119,8 @@ async function saveQueueEntry() {
                 printQueue.find(
                     entry =>
                         entry.modelId === queueModel.id &&
-                        (entry.size || null) === (size || null)
+                        (entry.size || null) === (size || null) &&
+                        (entry.notes || "") === notes
                 );
 
 
@@ -5141,7 +5191,7 @@ async function saveQueueEntry() {
 
                         })
                         .select(
-                            "id, model_id, quantity, size, position, created_at"
+                            "id, model_id, quantity, size, notes, position, created_at"
                         )
                         .single();
 
@@ -5167,6 +5217,9 @@ async function saveQueueEntry() {
 
                     size:
                         data.size,
+
+                    notes:
+                        data.notes || "",
 
                     position:
                         data.position,
