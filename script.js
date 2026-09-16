@@ -31,7 +31,10 @@ const supabase =
             auth: {
                 autoRefreshToken: true,
                 persistSession: true,
-                detectSessionInUrl: false
+                detectSessionInUrl: true,
+                experimental: {
+                    passkey: true
+                }
             }
         }
     );
@@ -255,6 +258,42 @@ const toastContainer =
     document.getElementById("toastContainer");
 
 
+/* Auth / Passkey */
+
+const authModal =
+    document.getElementById("authModal");
+
+const authTitle =
+    document.getElementById("authTitle");
+
+const authDescription =
+    document.getElementById("authDescription");
+
+const passkeySignInButton =
+    document.getElementById("passkeySignInButton");
+
+const passkeyRegisterButton =
+    document.getElementById("passkeyRegisterButton");
+
+const openEmailSetupButton =
+    document.getElementById("openEmailSetupButton");
+
+const authEmailArea =
+    document.getElementById("authEmailArea");
+
+const authEmailInput =
+    document.getElementById("authEmailInput");
+
+const sendAuthEmailButton =
+    document.getElementById("sendAuthEmailButton");
+
+const authHelpText =
+    document.getElementById("authHelpText");
+
+const authStatus =
+    document.getElementById("authStatus");
+
+
 /* =========================================================
    APP STATE
    ========================================================= */
@@ -308,10 +347,127 @@ const MODEL_BUCKET =
     "models";
 
 const PREVIEW_BUCKET =
-    "previews";
+    "preview";
 
 const SIGNED_URL_SECONDS =
     24 * 60 * 60;
+
+
+/* =========================================================
+   UPLOAD EVENTS
+   ========================================================= */
+
+/*
+ * Der komplette Upload-Bereich öffnet den Explorer.
+ * Der Button selbst stoppt das Bubbling, damit nicht
+ * doppelt geklickt wird.
+ */
+dropUploadButton.addEventListener(
+    "click",
+    event => {
+
+        event.stopPropagation();
+        fileInput.click();
+
+    }
+);
+
+
+dropZone.addEventListener(
+    "click",
+    event => {
+
+        if (
+            event.target.closest("button")
+        ) {
+
+            return;
+
+        }
+
+        fileInput.click();
+
+    }
+);
+
+
+dropZone.addEventListener(
+    "keydown",
+    event => {
+
+        if (
+            event.key === "Enter" ||
+            event.key === " "
+        ) {
+
+            event.preventDefault();
+            fileInput.click();
+
+        }
+
+    }
+);
+
+
+dropZone.addEventListener(
+    "dragover",
+    event => {
+
+        event.preventDefault();
+        dropZone.classList.add("dragging");
+
+    }
+);
+
+
+dropZone.addEventListener(
+    "dragleave",
+    event => {
+
+        if (
+            !dropZone.contains(event.relatedTarget)
+        ) {
+
+            dropZone.classList.remove("dragging");
+
+        }
+
+    }
+);
+
+
+dropZone.addEventListener(
+    "drop",
+    event => {
+
+        event.preventDefault();
+        dropZone.classList.remove("dragging");
+
+        addFiles(
+            Array.from(event.dataTransfer.files)
+        );
+
+    }
+);
+
+
+fileInput.addEventListener(
+    "change",
+    event => {
+
+        const files =
+            Array.from(event.target.files);
+
+        if (files.length > 0) {
+
+            addFiles(files);
+
+        }
+
+        fileInput.value = "";
+
+    }
+);
 
 
 /* =========================================================
@@ -364,50 +520,579 @@ async function ensureAuth() {
         await supabase.auth.getSession();
 
 
+    if (session?.user) {
+        return session.user;
+    }
+
+
+    return null;
+
+}
+
+
+/* =========================================================
+   AUTH UI
+   ========================================================= */
+
+function setAuthStatus(
+    message,
+    type = "info"
+) {
+
+    authStatus.textContent =
+        message || "";
+
+    authStatus.className =
+        `auth-status ${type}`;
+
+}
+
+
+function showAuthModal() {
+
+    authModal.classList.remove(
+        "hidden"
+    );
+
+}
+
+
+function hideAuthModal() {
+
+    authModal.classList.add(
+        "hidden"
+    );
+
+    setAuthStatus(
+        "",
+        "info"
+    );
+
+}
+
+
+async function showAnonymousSetup() {
+
+    authTitle.textContent =
+        "Deine Library sichern";
+
+    authDescription.textContent =
+        "Deine aktuelle Library ist noch anonym. Verknüpfe sie einmalig mit deiner E-Mail und registriere danach einen Passkey. Deine bisherigen Modelle bleiben dabei erhalten.";
+
+    passkeySignInButton.classList.add(
+        "hidden"
+    );
+
+    passkeyRegisterButton.classList.add(
+        "hidden"
+    );
+
+    openEmailSetupButton.classList.remove(
+        "hidden"
+    );
+
+    authEmailArea.classList.add(
+        "hidden"
+    );
+
+    authHelpText.textContent =
+        "Die E-Mail wird nur einmal benötigt, damit dein Supabase-Account geräteübergreifend wiedergefunden werden kann.";
+
+    setAuthStatus(
+        "Noch nicht gesichert – die Bibliothek funktioniert weiter, bis du sie einmalig verknüpfst.",
+        "info"
+    );
+
+    showAuthModal();
+
+}
+
+
+async function showSignedOutAuth() {
+
+    authTitle.textContent =
+        "Mit Passkey anmelden";
+
+    authDescription.textContent =
+        "Nutze Face ID, Touch ID, Windows Hello oder den Passkey deines Geräts.";
+
+    passkeySignInButton.classList.remove(
+        "hidden"
+    );
+
+    passkeyRegisterButton.classList.add(
+        "hidden"
+    );
+
+    openEmailSetupButton.classList.remove(
+        "hidden"
+    );
+
+    authEmailArea.classList.add(
+        "hidden"
+    );
+
+    authHelpText.textContent =
+        "Wenn du dieses Gerät zum ersten Mal verwendest, kannst du dich einmalig per E-Mail-Link anmelden und danach einen Passkey registrieren.";
+
+    setAuthStatus(
+        "",
+        "info"
+    );
+
+    showAuthModal();
+
+}
+
+
+async function showPasskeyRegistration(user) {
+
+    authTitle.textContent =
+        "Passkey einrichten";
+
+    authDescription.textContent =
+        "Dein Account ist verbunden. Registriere jetzt einen Passkey, damit du dich auf diesem und weiteren Geräten ohne E-Mail und Passwort anmelden kannst.";
+
+    passkeySignInButton.classList.add(
+        "hidden"
+    );
+
+    passkeyRegisterButton.classList.remove(
+        "hidden"
+    );
+
+    openEmailSetupButton.classList.add(
+        "hidden"
+    );
+
+    authEmailArea.classList.add(
+        "hidden"
+    );
+
+    setAuthStatus(
+        `Account ${user.email ? "bereit" : "bereit"}. Jetzt Passkey registrieren.`,
+        "success"
+    );
+
+    showAuthModal();
+
+}
+
+
+async function handlePasskeySignIn() {
+
     if (
-        session?.user
+        !window.PublicKeyCredential
     ) {
 
-        return session.user;
+        setAuthStatus(
+            "Dieser Browser unterstützt keine Passkeys. Nutze die einmalige E-Mail-Einrichtung.",
+            "error"
+        );
+
+        return;
 
     }
 
 
-    const {
-        data,
-        error
-    } =
-        await supabase.auth.signInAnonymously();
+    passkeySignInButton.disabled =
+        true;
+
+    setAuthStatus(
+        "Passkey wird geprüft...",
+        "info"
+    );
 
 
-    if (
-        error
-    ) {
+    try {
+
+        const {
+            data,
+            error
+        } =
+            await supabase.auth.signInWithPasskey();
+
+
+        if (error) {
+            throw error;
+        }
+
+
+        if (!data?.user) {
+            throw new Error(
+                "Supabase hat keinen Benutzer zurückgegeben."
+            );
+        }
+
+
+        currentUser =
+            data.user;
+
+        hideAuthModal();
+
+        await loadCloudData();
+
+        showToast(
+            "Mit Passkey angemeldet."
+        );
+
+    } catch (error) {
 
         console.error(
-            "Supabase Auth:",
+            "Passkey Anmeldung:",
             error
         );
 
-        throw error;
+        setAuthStatus(
+            passkeyErrorMessage(error),
+            "error"
+        );
+
+    } finally {
+
+        passkeySignInButton.disabled =
+            false;
+
+    }
+
+}
+
+
+async function handleSendAuthEmail() {
+
+    const email =
+        authEmailInput.value
+            .trim()
+            .toLowerCase();
+
+
+    if (!email || !email.includes("@")) {
+
+        setAuthStatus(
+            "Bitte eine gültige E-Mail-Adresse eingeben.",
+            "error"
+        );
+
+        return;
+
+    }
+
+
+    sendAuthEmailButton.disabled =
+        true;
+
+    setAuthStatus(
+        "E-Mail-Link wird gesendet...",
+        "info"
+    );
+
+
+    try {
+
+        if (
+            currentUser?.is_anonymous
+        ) {
+
+            const {
+                error
+            } =
+                await supabase.auth.updateUser({
+                    email
+                });
+
+
+            if (error) {
+                throw error;
+            }
+
+
+            setAuthStatus(
+                "Fast geschafft. Öffne die Bestätigungs-E-Mail und rufe danach diese Seite erneut auf. Anschließend kannst du deinen Passkey registrieren.",
+                "success"
+            );
+
+            authEmailArea.classList.add(
+                "hidden"
+            );
+
+            openEmailSetupButton.classList.add(
+                "hidden"
+            );
+
+            return;
+
+        }
+
+
+        const redirectUrl =
+            `${window.location.origin}${window.location.pathname}`;
+
+
+        const {
+            error
+        } =
+            await supabase.auth.signInWithOtp({
+                email,
+                options: {
+                    emailRedirectTo: redirectUrl
+                }
+            });
+
+
+        if (error) {
+            throw error;
+        }
+
+
+        setAuthStatus(
+            "E-Mail-Link gesendet. Öffne ihn auf diesem Gerät. Danach wird dein Account automatisch erkannt.",
+            "success"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "E-Mail Einrichtung:",
+            error
+        );
+
+        setAuthStatus(
+            authEmailErrorMessage(error),
+            "error"
+        );
+
+    } finally {
+
+        sendAuthEmailButton.disabled =
+            false;
+
+    }
+
+}
+
+
+async function registerPasskeyForCurrentUser() {
+
+    if (
+        !currentUser ||
+        currentUser.is_anonymous
+    ) {
+
+        setAuthStatus(
+            "Der Account muss zuerst dauerhaft eingerichtet und bestätigt werden.",
+            "error"
+        );
+
+        return;
 
     }
 
 
     if (
-        !data?.user
+        !window.PublicKeyCredential
     ) {
 
-        throw new Error(
-            "Supabase hat keinen Benutzer zurückgegeben."
+        setAuthStatus(
+            "Dieser Browser unterstützt keine Passkeys.",
+            "error"
         );
+
+        return;
 
     }
 
 
-    return data.user;
+    passkeyRegisterButton.disabled =
+        true;
+
+    setAuthStatus(
+        "Passkey wird eingerichtet...",
+        "info"
+    );
+
+
+    try {
+
+        const {
+            data,
+            error
+        } =
+            await supabase.auth.registerPasskey();
+
+
+        if (error) {
+            throw error;
+        }
+
+
+        hideAuthModal();
+
+        showToast(
+            "Passkey erfolgreich registriert."
+        );
+
+        await loadCloudData();
+
+    } catch (error) {
+
+        console.error(
+            "Passkey Registrierung:",
+            error
+        );
+
+        setAuthStatus(
+            passkeyErrorMessage(error),
+            "error"
+        );
+
+    } finally {
+
+        passkeyRegisterButton.disabled =
+            false;
+
+    }
 
 }
+
+
+async function maybeShowPasskeySetup(user) {
+
+    if (!user || user.is_anonymous) {
+        return;
+    }
+
+
+    try {
+
+        const {
+            data,
+            error
+        } =
+            await supabase.auth.passkey.list();
+
+
+        if (error) {
+            console.warn(
+                "Passkey Liste:",
+                error
+            );
+            return;
+        }
+
+
+        if (!data || data.length === 0) {
+            await showPasskeyRegistration(user);
+        }
+
+    } catch (error) {
+
+        console.warn(
+            "Passkey Prüfung:",
+            error
+        );
+
+    }
+
+}
+
+
+function passkeyErrorMessage(error) {
+
+    const code =
+        error?.code ||
+        "";
+
+
+    if (code === "passkey_disabled") {
+        return "Passkeys sind in deinem Supabase-Projekt noch nicht aktiviert.";
+    }
+
+
+    if (code === "webauthn_credential_not_found") {
+        return "Für dieses Gerät wurde kein passender Passkey gefunden.";
+    }
+
+
+    if (code === "NotAllowedError") {
+        return "Die Passkey-Anmeldung wurde abgebrochen oder vom Browser blockiert.";
+    }
+
+
+    return error?.message ||
+        "Die Passkey-Aktion ist fehlgeschlagen.";
+
+}
+
+
+function authEmailErrorMessage(error) {
+
+    const message =
+        error?.message ||
+        "";
+
+
+    if (
+        message.toLowerCase().includes(
+            "manual linking"
+        )
+    ) {
+
+        return "Das Verknüpfen des anonymen Accounts ist in Supabase noch nicht aktiviert. Aktiviere dort Manual Linking und versuche es erneut.";
+
+    }
+
+
+    return message ||
+        "Der E-Mail-Link konnte nicht gesendet werden.";
+
+}
+
+
+passkeySignInButton.addEventListener(
+    "click",
+    handlePasskeySignIn
+);
+
+
+passkeyRegisterButton.addEventListener(
+    "click",
+    registerPasskeyForCurrentUser
+);
+
+
+openEmailSetupButton.addEventListener(
+    "click",
+    () => {
+
+        authEmailArea.classList.remove(
+            "hidden"
+        );
+
+        setTimeout(
+            () => authEmailInput.focus(),
+            30
+        );
+
+    }
+);
+
+
+sendAuthEmailButton.addEventListener(
+    "click",
+    handleSendAuthEmail
+);
+
+
+authEmailInput.addEventListener(
+    "keydown",
+    event => {
+
+        if (event.key === "Enter") {
+            handleSendAuthEmail();
+        }
+
+    }
+);
 
 
 /* =========================================================
@@ -650,17 +1335,21 @@ async function loadModels() {
 async function loadPreviewUrls() {
 
     const paths =
-        models
-            .filter(
-                model =>
-                    Boolean(
-                        model.previewPath
+        [
+            ...new Set(
+                models
+                    .filter(
+                        model =>
+                            Boolean(
+                                model.previewPath
+                            )
+                    )
+                    .map(
+                        model =>
+                            model.previewPath
                     )
             )
-            .map(
-                model =>
-                    model.previewPath
-            );
+        ];
 
 
     if (
@@ -672,56 +1361,77 @@ async function loadPreviewUrls() {
     }
 
 
-    const {
-        data,
-        error
-    } =
-        await supabase
-            .storage
-            .from(
-                PREVIEW_BUCKET
-            )
-            .createSignedUrls(
-                paths,
-                SIGNED_URL_SECONDS
-            );
-
-
-    if (
-        error
-    ) {
-
-        console.warn(
-            "Preview URLs:",
-            error
-        );
-
-        return;
-
-    }
-
-
     const urlMap =
         new Map();
 
 
-    data.forEach(
-        item => {
+    /*
+     * Primär verwenden wir signierte URLs.
+     * Das ist der normale Weg für einen privaten Bucket.
+     */
+    try {
 
-            if (
-                item.path &&
-                item.signedUrl
-            ) {
-
-                urlMap.set(
-                    item.path,
-                    item.signedUrl
+        const {
+            data,
+            error
+        } =
+            await supabase
+                .storage
+                .from(
+                    PREVIEW_BUCKET
+                )
+                .createSignedUrls(
+                    paths,
+                    SIGNED_URL_SECONDS
                 );
 
-            }
+
+        if (
+            !error &&
+            Array.isArray(data)
+        ) {
+
+            data.forEach(
+                (
+                    item,
+                    index
+                ) => {
+
+                    const path =
+                        item?.path ||
+                        paths[index];
+
+                    const signedUrl =
+                        item?.signedUrl ||
+                        item?.signedURL ||
+                        null;
+
+
+                    if (
+                        path &&
+                        signedUrl
+                    ) {
+
+                        urlMap.set(
+                            path,
+                            signedUrl
+                        );
+
+                    }
+
+                }
+            );
 
         }
-    );
+
+    } catch (error) {
+
+        console.warn(
+            "Signierte Preview-URLs konnten nicht geladen werden:",
+            error
+        );
+
+    }
 
 
     const expiresAt =
@@ -733,28 +1443,227 @@ async function loadPreviewUrls() {
         1000;
 
 
-    models.forEach(
-        model => {
+    /*
+     * Für Safari/iPhone gibt es einen robusten Fallback:
+     * Wenn keine signierte URL verfügbar ist, wird die Preview
+     * direkt als Blob aus Storage geladen und lokal im Browser
+     * als Object-URL verwendet.
+     */
+    for (
+        const model of models
+    ) {
 
-            if (
-                model.previewPath &&
-                urlMap.has(
-                    model.previewPath
-                )
-            ) {
+        if (
+            !model.previewPath
+        ) {
 
-                model.previewURL =
-                    urlMap.get(
+            continue;
+
+        }
+
+
+        const signedUrl =
+            urlMap.get(
+                model.previewPath
+            );
+
+
+        if (
+            signedUrl
+        ) {
+
+            model.previewURL =
+                signedUrl;
+
+            model.previewExpiresAt =
+                expiresAt;
+
+            continue;
+
+        }
+
+
+        try {
+
+            const {
+                data: blob,
+                error
+            } =
+                await supabase
+                    .storage
+                    .from(
+                        PREVIEW_BUCKET
+                    )
+                    .download(
                         model.previewPath
                     );
 
-                model.previewExpiresAt =
-                    expiresAt;
+
+            if (
+                error ||
+                !blob
+            ) {
+
+                throw (
+                    error ||
+                    new Error(
+                        "Preview konnte nicht geladen werden."
+                    )
+                );
 
             }
 
+
+            if (
+                model.previewURL &&
+                model.previewURL.startsWith(
+                    "blob:"
+                )
+            ) {
+
+                URL.revokeObjectURL(
+                    model.previewURL
+                );
+
+            }
+
+
+            model.previewURL =
+                URL.createObjectURL(
+                    blob
+                );
+
+            model.previewExpiresAt =
+                Number.MAX_SAFE_INTEGER;
+
+
+        } catch (error) {
+
+            console.warn(
+                "Preview konnte nicht geladen werden:",
+                model.previewPath,
+                error
+            );
+
+            model.previewURL =
+                null;
+
+            model.previewExpiresAt =
+                0;
+
         }
-    );
+
+    }
+
+}
+
+
+/* =========================================================
+   PREVIEW FEHLER-FALLBACK
+   ========================================================= */
+
+async function recoverPreviewImage(
+    model,
+    image
+) {
+
+    if (
+        !model?.previewPath ||
+        !image
+    ) {
+
+        return;
+
+    }
+
+
+    if (
+        image.dataset.recovering ===
+        "true"
+    ) {
+
+        return;
+
+    }
+
+
+    image.dataset.recovering =
+        "true";
+
+
+    try {
+
+        const {
+            data: blob,
+            error
+        } =
+            await supabase
+                .storage
+                .from(
+                    PREVIEW_BUCKET
+                )
+                .download(
+                    model.previewPath
+                );
+
+
+        if (
+            error ||
+            !blob
+        ) {
+
+            throw (
+                error ||
+                new Error(
+                    "Preview konnte nicht geladen werden."
+                )
+            );
+
+        }
+
+
+        if (
+            model.previewURL &&
+            model.previewURL.startsWith(
+                "blob:"
+            )
+        ) {
+
+            URL.revokeObjectURL(
+                model.previewURL
+            );
+
+        }
+
+
+        model.previewURL =
+            URL.createObjectURL(
+                blob
+            );
+
+        model.previewExpiresAt =
+            Number.MAX_SAFE_INTEGER;
+
+        image.src =
+            model.previewURL;
+
+    } catch (error) {
+
+        console.warn(
+            "Preview-Fallback fehlgeschlagen:",
+            error
+        );
+
+        image.parentElement?.classList.add(
+            "preview-load-failed"
+        );
+
+    } finally {
+
+        image.dataset.recovering =
+            "false";
+
+    }
 
 }
 
@@ -1056,6 +1965,12 @@ async function addFiles(
         const file of validFiles
     ) {
 
+        showToast(
+            `"${file.name}" wird hochgeladen...`,
+            "info"
+        );
+
+
         const success =
             await uploadNewModel(
                 file
@@ -1105,6 +2020,11 @@ async function uploadNewModel(
 ) {
 
     try {
+
+        if (!currentUser) {
+            currentUser = await ensureAuth();
+        }
+
 
         const buffer =
             await file.arrayBuffer();
@@ -1437,9 +2357,7 @@ async function replaceModelFile(
             );
 
 
-        if (
-            duplicate
-        ) {
+        if (duplicate) {
 
             const proceed =
                 window.confirm(
@@ -1447,12 +2365,8 @@ async function replaceModelFile(
                 );
 
 
-            if (
-                !proceed
-            ) {
-
+            if (!proceed) {
                 return false;
-
             }
 
         }
@@ -1470,17 +2384,31 @@ async function replaceModelFile(
             );
 
 
-        const oldPreview =
+        const oldModelPath =
+            model.filePath;
+
+
+        const oldPreviewPath =
             model.previewPath;
 
 
-        let newPreviewPath =
-            null;
-
-
         /*
-         * Modell überschreiben.
+         * Erst unter einem neuen Pfad hochladen.
+         * So bleibt die alte Datei erhalten, falls
+         * ein späterer Datenbank-Schritt fehlschlägt.
          */
+
+        const suffix =
+            Date.now();
+
+
+        const nextModelPath =
+            `${currentUser.id}/${model.id}-${suffix}.3mf`;
+
+
+        let nextPreviewPath =
+            oldPreviewPath;
+
 
         const modelUpload =
             await supabase
@@ -1489,10 +2417,10 @@ async function replaceModelFile(
                     MODEL_BUCKET
                 )
                 .upload(
-                    model.filePath,
+                    nextModelPath,
                     file,
                     {
-                        upsert: true,
+                        upsert: false,
                         contentType:
                             "application/vnd.ms-package.3dmanufacturing-3dmodel+xml",
                         cacheControl:
@@ -1501,83 +2429,128 @@ async function replaceModelFile(
                 );
 
 
-        if (
-            modelUpload.error
-        ) {
-
+        if (modelUpload.error) {
             throw modelUpload.error;
-
         }
 
 
-        /*
-         * Preview neu schreiben.
-         */
+        try {
 
-        if (
-            previewFile
-        ) {
+            if (previewFile) {
 
-            const extension =
-                getImageExtension(
-                    previewFile.name
-                );
-
-
-            const blob =
-                await previewFile.async(
-                    "blob"
-                );
-
-
-            newPreviewPath =
-                previewStoragePath(
-                    model.id,
-                    extension
-                );
-
-
-            const upload =
-                await supabase
-                    .storage
-                    .from(
-                        PREVIEW_BUCKET
-                    )
-                    .upload(
-                        newPreviewPath,
-                        blob,
-                        {
-                            upsert: true,
-                            contentType:
-                                getImageMime(
-                                    extension
-                                ),
-                            cacheControl:
-                                "86400"
-                        }
+                const extension =
+                    getImageExtension(
+                        previewFile.name
                     );
 
 
-            if (
-                upload.error
-            ) {
+                const blob =
+                    await previewFile.async(
+                        "blob"
+                    );
 
-                throw upload.error;
+
+                nextPreviewPath =
+                    `${currentUser.id}/${model.id}-${suffix}.${extension}`;
+
+
+                const previewUpload =
+                    await supabase
+                        .storage
+                        .from(
+                            PREVIEW_BUCKET
+                        )
+                        .upload(
+                            nextPreviewPath,
+                            blob,
+                            {
+                                upsert: false,
+                                contentType:
+                                    getImageMime(
+                                        extension
+                                    ),
+                                cacheControl:
+                                    "86400"
+                            }
+                        );
+
+
+                if (previewUpload.error) {
+                    throw previewUpload.error;
+                }
 
             }
+
+
+            const { error } =
+                await supabase
+                    .from("models")
+                    .update({
+
+                        original_filename:
+                            file.name,
+
+                        file_path:
+                            nextModelPath,
+
+                        preview_path:
+                            nextPreviewPath,
+
+                        file_hash:
+                            hash,
+
+                        updated_at:
+                            new Date().toISOString()
+
+                    })
+                    .eq(
+                        "id",
+                        model.id
+                    );
+
+
+            if (error) {
+                throw error;
+            }
+
+
+        } catch (error) {
+
+            await cleanupStorageFiles(
+                nextModelPath,
+                nextPreviewPath !== oldPreviewPath
+                    ? nextPreviewPath
+                    : null
+            );
+
+
+            throw error;
 
         }
 
 
         /*
-         * Wenn sich die Preview-Endung verändert hat,
-         * alte Preview löschen.
+         * Erst nachdem der neue Datensatz erfolgreich
+         * in der DB steht, werden die alten Objekte gelöscht.
          */
 
+        if (oldModelPath && oldModelPath !== nextModelPath) {
+
+            await supabase
+                .storage
+                .from(
+                    MODEL_BUCKET
+                )
+                .remove([
+                    oldModelPath
+                ]);
+
+        }
+
+
         if (
-            oldPreview &&
-            newPreviewPath &&
-            oldPreview !== newPreviewPath
+            oldPreviewPath &&
+            oldPreviewPath !== nextPreviewPath
         ) {
 
             await supabase
@@ -1586,46 +2559,8 @@ async function replaceModelFile(
                     PREVIEW_BUCKET
                 )
                 .remove([
-                    oldPreview
+                    oldPreviewPath
                 ]);
-
-        }
-
-
-        const {
-            error
-        } =
-            await supabase
-                .from("models")
-                .update({
-
-                    original_filename:
-                        file.name,
-
-                    file_path:
-                        model.filePath,
-
-                    preview_path:
-                        newPreviewPath,
-
-                    file_hash:
-                        hash,
-
-                    updated_at:
-                        new Date().toISOString()
-
-                })
-                .eq(
-                    "id",
-                    model.id
-                );
-
-
-        if (
-            error
-        ) {
-
-            throw error;
 
         }
 
@@ -1639,8 +2574,11 @@ async function replaceModelFile(
         model.originalName =
             file.name;
 
+        model.filePath =
+            nextModelPath;
+
         model.previewPath =
-            newPreviewPath;
+            nextPreviewPath;
 
         model.previewURL =
             null;
@@ -1649,12 +2587,13 @@ async function replaceModelFile(
             0;
 
 
+        await loadPreviewUrls();
+
+
         return true;
 
 
-    } catch (
-        error
-    ) {
+    } catch (error) {
 
         console.error(
             "Datei ersetzen:",
@@ -1663,7 +2602,7 @@ async function replaceModelFile(
 
 
         showToast(
-            "Die 3MF-Datei konnte nicht ersetzt werden.",
+            `Die 3MF-Datei konnte nicht ersetzt werden: ${error?.message || "Unbekannter Fehler"}`,
             "error"
         );
 
@@ -1846,72 +2785,6 @@ function renderModels() {
 
 
 /* =========================================================
-   PREVIEW-FALLBACK
-   ========================================================= */
-
-function attachPreviewFallback(
-    image,
-    model
-) {
-
-    image.addEventListener(
-        "error",
-        async () => {
-
-            if (
-                image.dataset.previewRetried === "1" ||
-                !model.previewPath
-            ) {
-                return;
-            }
-
-            image.dataset.previewRetried = "1";
-
-            try {
-
-                const {
-                    data,
-                    error
-                } =
-                    await supabase
-                        .storage
-                        .from(PREVIEW_BUCKET)
-                        .createSignedUrl(
-                            model.previewPath,
-                            SIGNED_URL_SECONDS
-                        );
-
-                if (
-                    error ||
-                    !data?.signedUrl
-                ) {
-                    throw error || new Error("Keine Preview-URL erhalten.");
-                }
-
-                model.previewURL = data.signedUrl;
-                model.previewExpiresAt =
-                    Date.now() +
-                    (SIGNED_URL_SECONDS - 60) * 1000;
-
-                image.src = data.signedUrl;
-
-            } catch (error) {
-
-                console.warn(
-                    "Preview konnte nicht geladen werden:",
-                    error
-                );
-
-            }
-
-        },
-        { once: true }
-    );
-
-}
-
-
-/* =========================================================
    MODEL CARD
    ========================================================= */
 
@@ -1937,6 +2810,10 @@ function createModelCard(
                     src="${model.previewURL}"
                     alt="${escapeHTML(
                         model.name
+                    )}"
+                    data-preview-path="${escapeAttribute(
+                        model.previewPath ||
+                        ""
                     )}"
                 >
             `
@@ -2154,6 +3031,29 @@ function createModelCard(
      * Viewer
      */
 
+    const previewImage =
+        card.querySelector(
+            ".model-preview img"
+        );
+
+
+    if (
+        previewImage
+    ) {
+
+        previewImage.addEventListener(
+            "error",
+            () =>
+                recoverPreviewImage(
+                    model,
+                    previewImage
+                ),
+            { once: true }
+        );
+
+    }
+
+
     card
         .querySelector(
             '[data-action="viewer"]'
@@ -2165,31 +3065,6 @@ function createModelCard(
                     model
                 )
         );
-
-
-    /*
-     * Preview-Fallback:
-     * Wenn Safari/Browser eine abgelaufene oder fehlende
-     * Signed URL meldet, wird einmalig eine neue URL angefordert.
-     */
-
-    const previewImage =
-        card.querySelector(
-            ".model-preview img"
-        );
-
-
-    if (
-        previewImage &&
-        model.previewPath
-    ) {
-
-        attachPreviewFallback(
-            previewImage,
-            model
-        );
-
-    }
 
 
     /*
@@ -2696,11 +3571,26 @@ async function createTag() {
         tagInput.value.trim();
 
 
-    if (
-        !value
-    ) {
-
+    if (!value) {
         return;
+    }
+
+
+    if (!currentUser) {
+
+        try {
+            currentUser = await ensureAuth();
+        } catch (error) {
+
+            console.error("Tag Auth:", error);
+
+            showToast(
+                "Supabase ist noch nicht verbunden.",
+                "error"
+            );
+
+            return;
+        }
 
     }
 
@@ -4230,76 +5120,127 @@ async function saveQueueEntry() {
 
         } else {
 
-            const nextPosition =
-                printQueue.length;
+            /*
+             * Gleicher Datensatz + gleiche Größe wird
+             * zusammengeführt, statt doppelt angelegt.
+             */
+
+            const existing =
+                printQueue.find(
+                    entry =>
+                        entry.modelId === queueModel.id &&
+                        (entry.size || null) === (size || null)
+                );
 
 
-            const {
-                data,
-                error
-            } =
-                await supabase
-                    .from("print_queue")
-                    .insert({
+            if (existing) {
 
-                        user_id:
-                            currentUser.id,
-
-                        model_id:
-                            queueModel.id,
-
-                        quantity,
-
-                        size,
-
-                        position:
-                            nextPosition
-
-                    })
-                    .select(
-                        "id, model_id, quantity, size, position, created_at"
-                    )
-                    .single();
+                const newQuantity =
+                    Math.min(
+                        999,
+                        existing.quantity + quantity
+                    );
 
 
-            if (
-                error
-            ) {
+                const {
+                    error
+                } =
+                    await supabase
+                        .from("print_queue")
+                        .update({
+                            quantity:
+                                newQuantity
+                        })
+                        .eq(
+                            "id",
+                            existing.id
+                        );
 
-                throw error;
+
+                if (error) {
+                    throw error;
+                }
+
+
+                existing.quantity =
+                    newQuantity;
+
+
+                showToast(
+                    "Vorhandenen Druckeintrag aktualisiert."
+                );
+
+
+            } else {
+
+                const nextPosition =
+                    printQueue.length;
+
+
+                const {
+                    data,
+                    error
+                } =
+                    await supabase
+                        .from("print_queue")
+                        .insert({
+
+                            user_id:
+                                currentUser.id,
+
+                            model_id:
+                                queueModel.id,
+
+                            quantity,
+
+                            size,
+
+                            position:
+                                nextPosition
+
+                        })
+                        .select(
+                            "id, model_id, quantity, size, position, created_at"
+                        )
+                        .single();
+
+
+                if (error) {
+                    throw error;
+                }
+
+
+                printQueue.push({
+
+                    id:
+                        data.id,
+
+                    modelId:
+                        data.model_id,
+
+                    model:
+                        queueModel,
+
+                    quantity:
+                        data.quantity,
+
+                    size:
+                        data.size,
+
+                    position:
+                        data.position,
+
+                    createdAt:
+                        data.created_at
+
+                });
+
+
+                showToast(
+                    "Zur Druckwarteschlange hinzugefügt."
+                );
 
             }
-
-
-            printQueue.push({
-
-                id:
-                    data.id,
-
-                modelId:
-                    data.model_id,
-
-                model:
-                    queueModel,
-
-                quantity:
-                    data.quantity,
-
-                size:
-                    data.size,
-
-                position:
-                    data.position,
-
-                createdAt:
-                    data.created_at
-
-            });
-
-
-            showToast(
-                "Zur Druckwarteschlange hinzugefügt."
-            );
 
         }
 
@@ -6722,6 +7663,82 @@ function throwDbError(
 
 
 /* =========================================================
+   ONLINE / OFFLINE STATUS
+   ========================================================= */
+
+function setOfflineStatus() {
+
+    const status =
+        document.querySelector(
+            ".sidebar-status"
+        );
+
+    if (!status) {
+        return;
+    }
+
+    status.classList.remove(
+        "status-loading"
+    );
+
+    status.innerHTML = `
+        <span class="status-dot offline"></span>
+        Offline – Änderungen werden nicht synchronisiert
+    `;
+
+}
+
+
+function setLoadingStatus() {
+
+    const status =
+        document.querySelector(
+            ".sidebar-status"
+        );
+
+    if (!status) {
+        return;
+    }
+
+    status.classList.add(
+        "status-loading"
+    );
+
+    status.innerHTML = `
+        <span class="status-dot loading"></span>
+        Cloud wird geladen...
+    `;
+
+}
+
+
+window.addEventListener(
+    "offline",
+    () => {
+        setOfflineStatus();
+        showToast(
+            "Keine Internetverbindung. Cloud-Funktionen sind vorübergehend nicht verfügbar.",
+            "error"
+        );
+    }
+);
+
+
+window.addEventListener(
+    "online",
+    () => {
+
+        setCloudStatus();
+
+        showToast(
+            "Internetverbindung wiederhergestellt."
+        );
+
+    }
+);
+
+
+/* =========================================================
    STARTUP
    ========================================================= */
 
@@ -6729,21 +7746,50 @@ async function boot() {
 
     try {
 
-        /*
-         * Erste Verbindung zu Supabase.
-         */
+        setLoadingStatus();
 
-        viewerError.classList.add(
-            "hidden"
+        setAuthStatus(
+            "Cloud-Verbindung wird hergestellt...",
+            "info"
         );
+
+
+        const user =
+            await ensureAuth();
+
+
+        if (!user) {
+
+            await showSignedOutAuth();
+
+            return;
+
+        }
+
+
+        currentUser =
+            user;
 
 
         await loadCloudData();
 
 
-    } catch (
-        error
-    ) {
+        if (user.is_anonymous) {
+
+            await showAnonymousSetup();
+
+        } else {
+
+            hideAuthModal();
+
+            await maybeShowPasskeySetup(
+                user
+            );
+
+        }
+
+
+    } catch (error) {
 
         console.error(
             "Boot:",
@@ -6751,14 +7797,19 @@ async function boot() {
         );
 
 
+        if (!navigator.onLine) {
+            setOfflineStatus();
+        }
+
         showToast(
-            "Supabase konnte nicht geladen werden. Prüfe URL, Key und die Tabellen-/Storage-Rechte.",
+            `Supabase konnte nicht geladen werden: ${error?.message || "Unbekannter Fehler"}`,
             "error"
         );
 
     }
 
 }
+
 
 
 /* =========================================================
