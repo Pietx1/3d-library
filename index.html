@@ -573,119 +573,44 @@
         </div>
 
     </div>
-
-
-
     <!-- =====================================================
-         3D VIEWER
+         ALLE DRUCKPLATTEN
     ====================================================== -->
 
     <div
         class="modal hidden"
-        id="viewerModal"
+        id="platePreviewModal"
+        aria-modal="true"
+        role="dialog"
     >
+        <div class="modal-backdrop" data-close="platePreview"></div>
 
-        <div
-            class="modal-backdrop"
-            data-close="viewer"
-        ></div>
-
-
-        <div class="viewer-window">
-
-            <div class="viewer-header">
-
+        <div class="plate-preview-window">
+            <div class="plate-preview-header">
                 <div>
-
-                    <span class="viewer-label">
-                        3D VIEWER
-                    </span>
-
-
-                    <h2 id="viewerTitle">
-                        Modell
-                    </h2>
-
+                    <span class="viewer-label">DRUCKPLATTEN</span>
+                    <h2 id="platePreviewTitle">Alle Druckplatten</h2>
                 </div>
-
 
                 <button
                     class="close-button"
-                    id="closeViewer"
+                    id="closePlatePreview"
                     type="button"
-                >
-                    ×
-                </button>
-
+                    aria-label="Schließen"
+                >×</button>
             </div>
 
-
-            <div
-                class="viewer-container"
-                id="viewerContainer"
-            >
-
-                <div
-                    class="viewer-loading"
-                    id="viewerLoading"
-                >
-                    3D-Modell wird geladen...
+            <div class="plate-preview-content" id="platePreviewContent">
+                <div class="plate-preview-loading" id="platePreviewLoading">
+                    Druckplatten werden geladen...
                 </div>
 
-
-                <div
-                    class="viewer-error hidden"
-                    id="viewerError"
-                >
-                </div>
-
+                <div class="plate-preview-error hidden" id="platePreviewError"></div>
+                <div class="plate-preview-grid" id="platePreviewGrid"></div>
             </div>
-
-
-            <div class="viewer-controls">
-
-                <span class="desktop-control">
-                    Linke Maustaste = drehen
-                </span>
-
-                <span class="desktop-control">
-                    Mittlere Maustaste = drehen
-                </span>
-
-                <span class="desktop-control">
-                    Rechte Maustaste = verschieben
-                </span>
-
-                <span class="desktop-control">
-                    Mausrad = zoomen
-                </span>
-
-                <span class="mobile-control">
-                    1 Finger = drehen
-                </span>
-
-                <span class="mobile-control">
-                    2 Finger = verschieben / zoomen
-                </span>
-
-
-                <button
-                    class="viewer-reset"
-                    id="resetViewer"
-                    type="button"
-                >
-                    Ansicht zurücksetzen
-                </button>
-
-            </div>
-
         </div>
-
     </div>
-
-
-
-    <!-- =====================================================
+<!-- =====================================================
          TAG ERSTELLEN
     ====================================================== -->
 

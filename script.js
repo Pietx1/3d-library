@@ -41,21 +41,6 @@ const supabase =
 
 
 /* =========================================================
-   THREE.JS
-   ========================================================= */
-
-import * as THREE from "three";
-
-import {
-    OrbitControls
-} from "three/addons/controls/OrbitControls.js";
-
-import {
-    ThreeMFLoader
-} from "three/addons/loaders/3MFLoader.js";
-
-
-/* =========================================================
    DOM
    ========================================================= */
 
@@ -139,30 +124,6 @@ const queueEmpty =
 
 const clearQueueButton =
     document.getElementById("clearQueueButton");
-
-
-/* Viewer */
-
-const viewerModal =
-    document.getElementById("viewerModal");
-
-const viewerContainer =
-    document.getElementById("viewerContainer");
-
-const viewerTitle =
-    document.getElementById("viewerTitle");
-
-const viewerLoading =
-    document.getElementById("viewerLoading");
-
-const viewerError =
-    document.getElementById("viewerError");
-
-const closeViewer =
-    document.getElementById("closeViewer");
-
-const resetViewer =
-    document.getElementById("resetViewer");
 
 
 /* Tags */
@@ -257,6 +218,26 @@ const cancelQueueEntry =
 const closeQueueEntry =
     document.getElementById("closeQueueEntry");
 
+/* Plate previews */
+
+const platePreviewModal =
+    document.getElementById("platePreviewModal");
+
+const platePreviewTitle =
+    document.getElementById("platePreviewTitle");
+
+const platePreviewLoading =
+    document.getElementById("platePreviewLoading");
+
+const platePreviewError =
+    document.getElementById("platePreviewError");
+
+const platePreviewGrid =
+    document.getElementById("platePreviewGrid");
+
+const closePlatePreview =
+    document.getElementById("closePlatePreview");
+
 
 /* Toast */
 
@@ -322,27 +303,6 @@ let queueModel = null;
 let queueEntryForEdit = null;
 
 let unitIsCentimeters = true;
-
-
-/* =========================================================
-   VIEWER STATE
-   ========================================================= */
-
-let scene = null;
-
-let camera = null;
-
-let renderer = null;
-
-let controls = null;
-
-let viewerObject = null;
-
-let viewerAnimationFrame = null;
-
-let defaultCameraPosition = null;
-
-let defaultTarget = null;
 
 
 /* =========================================================
@@ -2875,13 +2835,13 @@ function createModelCard(
 
         <div
             class="model-preview"
-            data-action="viewer"
+            data-action="plates"
         >
 
             ${preview}
 
             <div class="model-open-hint">
-                3D-Modell öffnen
+                Alle Druckplatten öffnen
             </div>
 
         </div>
@@ -3002,17 +2962,17 @@ function createModelCard(
 
 
     /*
-     * Viewer
+     * Druckplatten
      */
 
     card
         .querySelector(
-            '[data-action="viewer"]'
+            '[data-action="plates"]'
         )
         .addEventListener(
             "click",
             () =>
-                openViewer(
+                openPlatePreviewModal(
                     model
                 )
         );
@@ -6022,53 +5982,38 @@ async function normalizeQueuePositions() {
 }
 
 
+
 /* =========================================================
-   3D VIEWER
+   ALLE DRUCKPLATTEN
    ========================================================= */
 
-async function openViewer(
+async function openPlatePreviewModal(
     model
 ) {
 
-    viewerModal.classList.remove(
+    platePreviewModal.classList.remove(
         "hidden"
     );
 
-
-    viewerTitle.textContent =
+    platePreviewTitle.textContent =
         model.name;
 
-
-    viewerLoading.textContent =
-        "3D-Modell wird geladen...";
-
-
-    viewerLoading.classList.remove(
+    platePreviewLoading.classList.remove(
         "hidden"
     );
 
-
-    viewerError.classList.add(
+    platePreviewError.classList.add(
         "hidden"
     );
 
-
-    clearViewer();
-
+    platePreviewGrid.innerHTML =
+        "";
 
     try {
 
-        /*
-         * Modell zuerst aus lokalem File,
-         * ansonsten direkt aus Supabase Storage.
-         */
-
         let buffer;
 
-
-        if (
-            model.file
-        ) {
+        if (model.file) {
 
             buffer =
                 await model.file.arrayBuffer();
@@ -6088,80 +6033,96 @@ async function openViewer(
                         model.filePath
                     );
 
-
-            if (
-                error
-            ) {
-
+            if (error) {
                 throw error;
-
             }
-
 
             buffer =
                 await data.arrayBuffer();
-
         }
 
-
-        const loader =
-            new ThreeMFLoader();
-
-
-        const object =
-            loader.parse(
+        const zip =
+            await JSZip.loadAsync(
                 buffer
             );
 
-
-        if (
-            !object ||
-            !hasVisibleGeometry(
-                object
-            )
-        ) {
-
-            throw new Error(
-                "Keine sichtbare Geometrie gefunden."
+        const plateFiles =
+            findPlatePreviewFiles(
+                zip
             );
 
+        if (
+            plateFiles.length === 0
+        ) {
+            throw new Error(
+                "Keine Druckplatten-Vorschauen in dieser 3MF-Datei gefunden."
+            );
         }
 
+        const previews =
+            await Promise.all(
+                plateFiles.map(
+                    async plate => {
 
-        viewerObject =
-            object;
+                        const blob =
+                            await plate.file.async(
+                                "blob"
+                            );
 
+                        return {
+                            number:
+                                plate.number,
+                            url:
+                                URL.createObjectURL(
+                                    blob
+                                )
+                        };
 
-        setupViewer(
-            object
-        );
+                    }
+                )
+            );
 
+        platePreviewGrid.innerHTML =
+            previews
+                .map(
+                    plate => `
+                        <article class="plate-preview-card">
+                            <div class="plate-preview-card-image">
+                                <img
+                                    src="${escapeAttribute(
+                                        plate.url
+                                    )}"
+                                    alt="Druckplatte ${plate.number}"
+                                >
+                            </div>
 
-        viewerLoading.classList.add(
+                            <div class="plate-preview-card-label">
+                                Druckplatte ${plate.number}
+                            </div>
+                        </article>
+                    `
+                )
+                .join("");
+
+        platePreviewLoading.classList.add(
             "hidden"
         );
 
-
-    } catch (
-        error
-    ) {
+    } catch (error) {
 
         console.error(
-            "3D Viewer:",
+            "Druckplatten-Vorschau:",
             error
         );
 
-
-        viewerLoading.classList.add(
+        platePreviewLoading.classList.add(
             "hidden"
         );
 
+        platePreviewError.textContent =
+            "Die Druckplatten-Vorschauen konnten aus dieser 3MF-Datei nicht geladen werden.";
 
-        viewerError.textContent =
-            "Die 3MF-Datei konnte im 3D-Viewer nicht dargestellt werden.";
-
-
-        viewerError.classList.remove(
+        platePreviewError.classList.remove(
             "hidden"
         );
 
@@ -6170,686 +6131,141 @@ async function openViewer(
 }
 
 
-/* =========================================================
-   VIEWER SETUP
-   ========================================================= */
-
-function setupViewer(
-    object
+function findPlatePreviewFiles(
+    zip
 ) {
 
-    scene =
-        new THREE.Scene();
-
-
-    scene.background =
-        new THREE.Color(
-            0xe9ebee
-        );
-
-
-    const width =
-        Math.max(
-            viewerContainer.clientWidth,
-            1
-        );
-
-
-    const height =
-        Math.max(
-            viewerContainer.clientHeight,
-            1
-        );
-
-
-    camera =
-        new THREE.PerspectiveCamera(
-            42,
-            width / height,
-            0.000001,
-            1000000
-        );
-
-
-    renderer =
-        new THREE.WebGLRenderer({
-            antialias:
-                true,
-            powerPreference:
-                "high-performance"
-        });
-
-
-    renderer.setPixelRatio(
-        Math.min(
-            window.devicePixelRatio,
-            2
+    const candidates =
+        Object.values(
+            zip.files
         )
-    );
+            .filter(
+                file =>
+                    !file.dir
+            )
+            .map(
+                file => {
 
+                    const match =
+                        file.name.match(
+                            /(?:^|\/)plate_(\d+)(?:_small)?\.(png|jpe?g|webp)$/i
+                        );
 
-    renderer.setSize(
-        width,
-        height
-    );
+                    if (!match) {
+                        return null;
+                    }
 
+                    return {
+                        file,
+                        number:
+                            Number(
+                                match[1]
+                            ),
+                        isSmall:
+                            /_small\./i.test(
+                                file.name
+                            )
+                    };
 
-    renderer.outputColorSpace =
-        THREE.SRGBColorSpace;
+                }
+            )
+            .filter(
+                Boolean
+            );
 
+    const byPlate =
+        new Map();
 
-    renderer.setClearColor(
-        0xe9ebee,
-        1
-    );
-
-
-    viewerContainer.appendChild(
-        renderer.domElement
-    );
-
-
-    renderer.domElement.addEventListener(
-        "contextmenu",
-        event =>
-            event.preventDefault()
-    );
-
-
-    /*
-     * Desktop:
-     *
-     * Links  = drehen
-     * Mitte  = drehen
-     * Rechts = verschieben
-     * Wheel  = zoom
-     */
-
-    controls =
-        new OrbitControls(
-            camera,
-            renderer.domElement
-        );
-
-
-    controls.mouseButtons = {
-
-        LEFT:
-            THREE.MOUSE.ROTATE,
-
-        MIDDLE:
-            THREE.MOUSE.ROTATE,
-
-        RIGHT:
-            THREE.MOUSE.PAN
-
-    };
-
-
-    /*
-     * iPhone:
-     *
-     * 1 Finger = drehen
-     * 2 Finger = verschieben + zoomen
-     */
-
-    controls.touches = {
-
-        ONE:
-            THREE.TOUCH.ROTATE,
-
-        TWO:
-            THREE.TOUCH.DOLLY_PAN
-
-    };
-
-
-    controls.enableDamping =
-        true;
-
-
-    controls.dampingFactor =
-        0.07;
-
-
-    controls.enablePan =
-        true;
-
-
-    controls.screenSpacePanning =
-        true;
-
-
-    /*
-     * Beleuchtung
-     */
-
-    scene.add(
-        new THREE.HemisphereLight(
-            0xffffff,
-            0x777777,
-            2.5
+    candidates
+        .sort(
+            (a, b) =>
+                a.number -
+                b.number ||
+                Number(a.isSmall) -
+                Number(b.isSmall)
         )
-    );
+        .forEach(
+            item => {
 
+                const existing =
+                    byPlate.get(
+                        item.number
+                    );
 
-    const keyLight =
-        new THREE.DirectionalLight(
-            0xffffff,
-            3.2
-        );
+                if (
+                    !existing ||
+                    (
+                        existing.isSmall &&
+                        !item.isSmall
+                    )
+                ) {
 
+                    byPlate.set(
+                        item.number,
+                        item
+                    );
 
-    keyLight.position.set(
-        180,
-        250,
-        180
-    );
-
-
-    scene.add(
-        keyLight
-    );
-
-
-    const fillLight =
-        new THREE.DirectionalLight(
-            0xffffff,
-            1.5
-        );
-
-
-    fillLight.position.set(
-        -180,
-        110,
-        -160
-    );
-
-
-    scene.add(
-        fillLight
-    );
-
-
-    /*
-     * 3MF = Z-Up
-     */
-
-    object.rotation.x =
-        -Math.PI / 2;
-
-
-    scene.add(
-        object
-    );
-
-
-    /*
-     * Fehlende Materialien
-     * werden grau.
-     */
-
-    object.traverse(
-        child => {
-
-            if (
-                !child.isMesh
-            ) {
-
-                return;
+                }
 
             }
+        );
+
+    return Array.from(
+        byPlate.values()
+    )
+        .sort(
+            (a, b) =>
+                a.number -
+                b.number
+        );
+
+}
 
 
-            if (
-                !child.material
-            ) {
+function closePlatePreviewWindow() {
 
-                child.material =
-                    new THREE.MeshStandardMaterial({
+    platePreviewGrid
+        .querySelectorAll(
+            "img"
+        )
+        .forEach(
+            image => {
 
-                        color:
-                            0x96999d,
+                if (
+                    image.src.startsWith(
+                        "blob:"
+                    )
+                ) {
 
-                        roughness:
-                            0.7,
+                    URL.revokeObjectURL(
+                        image.src
+                    );
 
-                        metalness:
-                            0.03,
-
-                        side:
-                            THREE.DoubleSide
-
-                    });
+                }
 
             }
-
-        }
-    );
-
-
-    fitViewerObject(
-        object
-    );
-
-
-    controls.update();
-
-
-    animateViewer();
-
-}
-
-
-/* =========================================================
-   VIEWER FIT
-   ========================================================= */
-
-function fitViewerObject(
-    object
-) {
-
-    object.updateMatrixWorld(
-        true
-    );
-
-
-    const box =
-        new THREE.Box3()
-            .setFromObject(
-                object
-            );
-
-
-    if (
-        box.isEmpty()
-    ) {
-
-        throw new Error(
-            "Keine Modellgröße gefunden."
         );
 
-    }
+    platePreviewGrid.innerHTML =
+        "";
 
-
-    const size =
-        box.getSize(
-            new THREE.Vector3()
-        );
-
-
-    const maxDimension =
-        Math.max(
-            size.x,
-            size.y,
-            size.z
-        );
-
-
-    if (
-        !Number.isFinite(
-            maxDimension
-        ) ||
-        maxDimension <= 0
-    ) {
-
-        throw new Error(
-            "Ungültige Modellgröße."
-        );
-
-    }
-
-
-    const targetSize =
-        20;
-
-
-    object.scale.setScalar(
-        targetSize /
-        maxDimension
-    );
-
-
-    object.updateMatrixWorld(
-        true
-    );
-
-
-    const scaledBox =
-        new THREE.Box3()
-            .setFromObject(
-                object
-            );
-
-
-    const center =
-        scaledBox.getCenter(
-            new THREE.Vector3()
-        );
-
-
-    object.position.sub(
-        center
-    );
-
-
-    object.updateMatrixWorld(
-        true
-    );
-
-
-    const finalBox =
-        new THREE.Box3()
-            .setFromObject(
-                object
-            );
-
-
-    const sphere =
-        finalBox.getBoundingSphere(
-            new THREE.Sphere()
-        );
-
-
-    const radius =
-        Math.max(
-            sphere.radius,
-            0.001
-        );
-
-
-    const distance =
-        Math.max(
-            radius * 2.6,
-            0.5
-        );
-
-
-    camera.position.set(
-        distance,
-        distance * 0.72,
-        distance
-    );
-
-
-    controls.minDistance =
-        Math.max(
-            radius * 0.001,
-            0.0001
-        );
-
-
-    controls.maxDistance =
-        Math.max(
-            radius * 2000,
-            1000
-        );
-
-
-    camera.near =
-        Math.max(
-            radius * 0.000001,
-            0.000001
-        );
-
-
-    camera.far =
-        Math.max(
-            radius * 100000,
-            100000
-        );
-
-
-    camera.updateProjectionMatrix();
-
-
-    controls.target.set(
-        0,
-        0,
-        0
-    );
-
-
-    defaultCameraPosition =
-        camera.position.clone();
-
-
-    defaultTarget =
-        controls.target.clone();
-
-}
-
-
-/* =========================================================
-   VIEWER RESET
-   ========================================================= */
-
-resetViewer.addEventListener(
-    "click",
-    () => {
-
-        if (
-            !camera ||
-            !controls
-        ) {
-
-            return;
-
-        }
-
-
-        camera.position.copy(
-            defaultCameraPosition
-        );
-
-
-        controls.target.copy(
-            defaultTarget
-        );
-
-
-        controls.update();
-
-    }
-);
-
-
-/* =========================================================
-   VIEWER ANIMATION
-   ========================================================= */
-
-function animateViewer() {
-
-    if (
-        viewerModal.classList.contains(
-            "hidden"
-        )
-    ) {
-
-        return;
-
-    }
-
-
-    viewerAnimationFrame =
-        requestAnimationFrame(
-            animateViewer
-        );
-
-
-    controls?.update();
-
-
-    if (
-        renderer &&
-        scene &&
-        camera
-    ) {
-
-        renderer.render(
-            scene,
-            camera
-        );
-
-    }
-
-}
-
-
-/* =========================================================
-   VIEWER RESIZE
-   ========================================================= */
-
-window.addEventListener(
-    "resize",
-    resizeViewer
-);
-
-
-function resizeViewer() {
-
-    if (
-        !renderer ||
-        !camera ||
-        viewerModal.classList.contains(
-            "hidden"
-        )
-    ) {
-
-        return;
-
-    }
-
-
-    const width =
-        Math.max(
-            viewerContainer.clientWidth,
-            1
-        );
-
-
-    const height =
-        Math.max(
-            viewerContainer.clientHeight,
-            1
-        );
-
-
-    camera.aspect =
-        width /
-        height;
-
-
-    camera.updateProjectionMatrix();
-
-
-    renderer.setSize(
-        width,
-        height
-    );
-
-}
-
-
-/* =========================================================
-   VIEWER CLOSE
-   ========================================================= */
-
-closeViewer.addEventListener(
-    "click",
-    closeViewerWindow
-);
-
-
-function closeViewerWindow() {
-
-    viewerModal.classList.add(
+    platePreviewModal.classList.add(
         "hidden"
     );
 
-
-    clearViewer();
-
 }
 
 
-/* =========================================================
-   VIEWER CLEANUP
-   ========================================================= */
-
-function clearViewer() {
-
-    if (
-        viewerAnimationFrame
-    ) {
-
-        cancelAnimationFrame(
-            viewerAnimationFrame
-        );
-
-
-        viewerAnimationFrame =
-            null;
-
-    }
-
-
-    if (
-        controls
-    ) {
-
-        controls.dispose();
-
-    }
-
-
-    if (
-        renderer
-    ) {
-
-        renderer.dispose();
-
-
-        if (
-            renderer.domElement.parentNode
-        ) {
-
-            renderer.domElement.parentNode.removeChild(
-                renderer.domElement
-            );
-
-        }
-
-    }
-
-
-    scene =
-        null;
-
-    camera =
-        null;
-
-    renderer =
-        null;
-
-    controls =
-        null;
-
-    viewerObject =
-        null;
-
-    defaultCameraPosition =
-        null;
-
-    defaultTarget =
-        null;
-
-}
+closePlatePreview.addEventListener(
+    "click",
+    closePlatePreviewWindow
+);
 
 
 /* =========================================================
    NAVIGATION
    ========================================================= */
+
 
 libraryNav.addEventListener(
     "click",
@@ -7053,7 +6469,7 @@ document
 
                         case "viewer":
 
-                            closeViewerWindow();
+                            closePlatePreviewWindow();
 
                             break;
 
