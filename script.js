@@ -5206,6 +5206,8 @@ async function saveQueueEntry() {
 
                             size,
 
+                            notes,
+
                             position:
                                 nextPosition
 
@@ -5450,6 +5452,24 @@ function createQueueRow(
                 )}
 
             </span>
+
+            ${
+                entry.notes
+                    ? `
+                        <div class="queue-notes-visible">
+                            <strong>Hinweis</strong>
+                            <div>
+                                ${escapeHTML(
+                                    entry.notes
+                                ).replace(
+                                    /\n/g,
+                                    "<br>"
+                                )}
+                            </div>
+                        </div>
+                    `
+                    : ""
+            }
 
         </div>
 
