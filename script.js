@@ -7351,6 +7351,7 @@ boot();
     let startX = 0;
     let startScrollLeft = 0;
     let moved = false;
+    let suppressNextClick = false;
 
     strip.addEventListener(
         "wheel",
@@ -7455,7 +7456,13 @@ boot();
                 return;
             }
 
+            suppressNextClick =
+                moved;
+
             dragging =
+                false;
+
+            moved =
                 false;
 
             strip.classList.remove(
@@ -7488,14 +7495,14 @@ boot();
         "click",
         event => {
 
-            if (!moved) {
+            if (!suppressNextClick) {
                 return;
             }
 
             event.preventDefault();
             event.stopPropagation();
 
-            moved =
+            suppressNextClick =
                 false;
 
         },
