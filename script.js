@@ -3053,9 +3053,28 @@ function createModelCard(
             const previous =
                 model.variableSize;
 
+            const nextValue =
+                sizeInput.checked;
+
+            if (
+                previous &&
+                !nextValue
+            ) {
+
+                const confirmed =
+                    window.confirm(
+                        "Größenauswahl wirklich deaktivieren? Die gespeicherten Größen bleiben erhalten, sind beim Drucken aber nicht mehr auswählbar."
+                    );
+
+                if (!confirmed) {
+                    sizeInput.checked = true;
+                    return;
+                }
+
+            }
 
             model.variableSize =
-                sizeInput.checked;
+                nextValue;
 
 
             try {
@@ -5474,9 +5493,16 @@ function createQueueRow(
             event.stopPropagation();
 
 
-            removeQueueEntry(
-                entry
-            );
+            const confirmed =
+                window.confirm(
+                    `"${entry.model?.name || "Druckeintrag"}" wirklich aus der Druckwarteschlange löschen?`
+                );
+
+            if (confirmed) {
+                removeQueueEntry(
+                    entry
+                );
+            }
 
         }
     );
@@ -5556,6 +5582,20 @@ function createQueueRow(
                 "drag-over"
             );
 
+            document
+                .querySelectorAll(
+                    ".queue-page-item.drag-target"
+                )
+                .forEach(
+                    item =>
+                        item.classList.remove(
+                            "drag-target"
+                        )
+                );
+
+            row.classList.add(
+                "drag-target"
+            );
 
             event.dataTransfer.dropEffect =
                 "move";
@@ -5595,6 +5635,10 @@ function createQueueRow(
 
             row.classList.remove(
                 "drag-over"
+            );
+
+            row.classList.remove(
+                "drag-target"
             );
 
 
@@ -6467,7 +6511,7 @@ document
                         type
                     ) {
 
-                        case "viewer":
+                        case "platePreview":
 
                             closePlatePreviewWindow();
 
@@ -6534,7 +6578,7 @@ document.addEventListener(
         }
 
 
-        closeViewerWindow();
+        closePlatePreviewWindow();
 
 
         tagModal.classList.add(

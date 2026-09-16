@@ -4027,3 +4027,125 @@ button {
     }
 
 }
+
+
+/* =====================================================
+   POLISH V2
+===================================================== */
+
+.close-button {
+    width: 46px;
+    height: 46px;
+    border-radius: 11px;
+    font-size: 29px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-button:active {
+    transform: scale(.96);
+}
+
+.plate-preview-window {
+    min-width: 0;
+}
+
+.plate-preview-header {
+    flex-shrink: 0;
+}
+
+.plate-preview-content {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Desktop: clearer, more physical drag feedback. */
+@media (min-width: 701px) {
+    .queue-page-item {
+        position: relative;
+        transition:
+            transform .20s cubic-bezier(.22, 1, .36, 1),
+            box-shadow .20s ease,
+            border-color .20s ease,
+            opacity .20s ease,
+            background-color .20s ease;
+    }
+
+    .queue-page-item.dragging {
+        opacity: .96;
+        transform: scale(.985) rotate(.15deg);
+        box-shadow:
+            0 18px 38px rgba(0, 0, 0, .16),
+            0 0 0 1px rgba(0, 0, 0, .06);
+        z-index: 5;
+    }
+
+    .queue-page-item.drag-target {
+        transform: translateY(4px) scale(1.008);
+        border-color: #8d8d92;
+        background: #fafafa;
+        box-shadow:
+            0 10px 26px rgba(0, 0, 0, .08),
+            0 0 0 2px rgba(0, 0, 0, .06);
+    }
+
+    .queue-page-item.drag-target::before {
+        content: "";
+        position: absolute;
+        left: 12px;
+        right: 12px;
+        bottom: -7px;
+        height: 3px;
+        border-radius: 999px;
+        background: #737373;
+        opacity: .55;
+        animation: queueDropPulse .85s ease-in-out infinite;
+        pointer-events: none;
+    }
+
+    @keyframes queueDropPulse {
+        0%, 100% { transform: scaleX(.80); opacity: .30; }
+        50% { transform: scaleX(1); opacity: .70; }
+    }
+}
+
+@media (max-width: 700px) {
+    .close-button {
+        width: 48px;
+        height: 48px;
+        font-size: 30px;
+    }
+
+    .plate-preview-window {
+        width: 96vw;
+        height: 90vh;
+        border-radius: 16px;
+    }
+
+    .plate-preview-header {
+        min-height: 70px;
+        padding: 12px 13px;
+    }
+
+    .plate-preview-content {
+        padding: 12px;
+    }
+
+    .plate-preview-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .queue-page-item.drag-target,
+    .queue-page-item.dragging {
+        transform: none;
+        box-shadow: none;
+        opacity: 1;
+    }
+
+    .queue-page-item.drag-target::before {
+        display: none;
+    }
+}
