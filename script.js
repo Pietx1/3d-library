@@ -633,7 +633,7 @@ async function showSignedOutAuth() {
     );
 
     authHelpText.textContent =
-        "Wenn du dieses Gerät zum ersten Mal verwendest, kannst du dich einmalig per E-Mail-Link anmelden und danach einen Passkey registrieren.";
+        "Wenn du diese App vom Home-Bildschirm öffnest, zuerst den Passkey verwenden. So brauchst du auf dem iPhone keinen neuen E-Mail-Link. Die E-Mail ist nur die einmalige Fallback-Anmeldung.";
 
     setAuthStatus(
         "",
@@ -781,6 +781,9 @@ async function handleSendAuthEmail() {
     sendAuthEmailButton.disabled =
         true;
 
+    let keepEmailButtonDisabled =
+        false;
+
     setAuthStatus(
         "E-Mail-Link wird gesendet...",
         "info"
@@ -856,15 +859,45 @@ async function handleSendAuthEmail() {
             error
         );
 
+        const authMessage =
+            authEmailErrorMessage(
+                error
+            );
+
         setAuthStatus(
-            authEmailErrorMessage(error),
+            authMessage,
             "error"
         );
 
+        if (
+            authMessage.includes(
+                "zu viele E-Mail-Anfragen"
+            )
+        ) {
+
+            keepEmailButtonDisabled =
+                true;
+
+            setTimeout(
+                () => {
+                    sendAuthEmailButton.disabled =
+                        false;
+                },
+                60000
+            );
+
+        }
+
     } finally {
 
-        sendAuthEmailButton.disabled =
-            false;
+        if (
+            !keepEmailButtonDisabled
+        ) {
+
+            sendAuthEmailButton.disabled =
+                false;
+
+        }
 
     }
 
@@ -1030,14 +1063,39 @@ function authEmailErrorMessage(error) {
         error?.message ||
         "";
 
+    const lowerMessage =
+        message.toLowerCase();
+
+    const errorCode =
+        String(
+            error?.code ||
+            ""
+        ).toLowerCase();
+
 
     if (
-        message.toLowerCase().includes(
+        lowerMessage.includes(
             "manual linking"
         )
     ) {
 
         return "Das Verknüpfen des anonymen Accounts ist in Supabase noch nicht aktiviert. Aktiviere dort Manual Linking und versuche es erneut.";
+
+    }
+
+
+    if (
+        errorCode === "over_email_send_rate_limit" ||
+        errorCode === "over_request_rate_limit" ||
+        lowerMessage.includes(
+            "rate limit"
+        ) ||
+        lowerMessage.includes(
+            "too many requests"
+        )
+    ) {
+
+        return "Supabase hat gerade zu viele E-Mail-Anfragen erkannt. Bitte jetzt nicht weiter auf E-Mail senden drücken. Warte etwas und nutze auf diesem iPhone möglichst den Passkey.";
 
     }
 
@@ -1288,6 +1346,9 @@ async function loadModels() {
                 previewURL:
                     null,
 
+                previewObjectURL:
+                    null,
+
                 previewExpiresAt:
                     0,
 
@@ -1334,26 +1395,17 @@ async function loadModels() {
 
 async function loadPreviewUrls() {
 
-    const paths =
-        [
-            ...new Set(
-                models
-                    .filter(
-                        model =>
-                            Boolean(
-                                model.previewPath
-                            )
-                    )
-                    .map(
-                        model =>
-                            model.previewPath
-                    )
-            )
-        ];
+    const previewModels =
+        models.filter(
+            model =>
+                Boolean(
+                    model.previewPath
+                )
+        );
 
 
     if (
-        paths.length === 0
+        previewModels.length === 0
     ) {
 
         return;
@@ -1361,77 +1413,11 @@ async function loadPreviewUrls() {
     }
 
 
-    const urlMap =
-        new Map();
-
-
-    /*
-     * Primär verwenden wir signierte URLs.
-     * Das ist der normale Weg für einen privaten Bucket.
-     */
-    try {
-
-        const {
-            data,
-            error
-        } =
-            await supabase
-                .storage
-                .from(
-                    PREVIEW_BUCKET
-                )
-                .createSignedUrls(
-                    paths,
-                    SIGNED_URL_SECONDS
-                );
-
-
-        if (
-            !error &&
-            Array.isArray(data)
-        ) {
-
-            data.forEach(
-                (
-                    item,
-                    index
-                ) => {
-
-                    const path =
-                        item?.path ||
-                        paths[index];
-
-                    const signedUrl =
-                        item?.signedUrl ||
-                        item?.signedURL ||
-                        null;
-
-
-                    if (
-                        path &&
-                        signedUrl
-                    ) {
-
-                        urlMap.set(
-                            path,
-                            signedUrl
-                        );
-
-                    }
-
-                }
-            );
-
-        }
-
-    } catch (error) {
-
-        console.warn(
-            "Signierte Preview-URLs konnten nicht geladen werden:",
-            error
+    const paths =
+        previewModels.map(
+            model =>
+                model.previewPath
         );
-
-    }
 
 
     const expiresAt =
@@ -1443,37 +1429,101 @@ async function loadPreviewUrls() {
         1000;
 
 
-    /*
-     * Für Safari/iPhone gibt es einen robusten Fallback:
-     * Wenn keine signierte URL verfügbar ist, wird die Preview
-     * direkt als Blob aus Storage geladen und lokal im Browser
-     * als Object-URL verwendet.
-     */
-    for (
-        const model of models
+    let signedData = null;
+    let signedError = null;
+
+
+    try {
+
+        const result =
+            await supabase
+                .storage
+                .from(
+                    PREVIEW_BUCKET
+                )
+                .createSignedUrls(
+                    paths,
+                    SIGNED_URL_SECONDS
+                );
+
+        signedData =
+            result.data || null;
+
+        signedError =
+            result.error || null;
+
+    } catch (error) {
+
+        signedError =
+            error;
+
+    }
+
+
+    if (
+        signedError
     ) {
 
+        console.warn(
+            "Preview-Signed-URLs fehlgeschlagen, versuche direkten Download:",
+            signedError
+        );
+
+    }
+
+
+    const urlMap =
+        new Map();
+
+
+    if (
+        Array.isArray(
+            signedData
+        )
+    ) {
+
+        signedData.forEach(
+            (
+                item,
+                index
+            ) => {
+
+                const path =
+                    item?.path ||
+                    paths[index];
+
+                if (
+                    path &&
+                    item?.signedUrl
+                ) {
+
+                    urlMap.set(
+                        path,
+                        item.signedUrl
+                    );
+
+                }
+
+            }
+        );
+
+    }
+
+
+    for (
+        const model of previewModels
+    ) {
+
+        const path =
+            model.previewPath;
+
+
         if (
-            !model.previewPath
-        ) {
-
-            continue;
-
-        }
-
-
-        const signedUrl =
-            urlMap.get(
-                model.previewPath
-            );
-
-
-        if (
-            signedUrl
+            urlMap.has(path)
         ) {
 
             model.previewURL =
-                signedUrl;
+                urlMap.get(path);
 
             model.previewExpiresAt =
                 expiresAt;
@@ -1483,6 +1533,11 @@ async function loadPreviewUrls() {
         }
 
 
+        /*
+         * Fallback für iPhone/Safari:
+         * Wenn Supabase keine Signed URL liefert, wird das Bild
+         * direkt als Blob geladen und als lokale Object-URL angezeigt.
+         */
         try {
 
             const {
@@ -1495,53 +1550,60 @@ async function loadPreviewUrls() {
                         PREVIEW_BUCKET
                     )
                     .download(
-                        model.previewPath
+                        path
                     );
 
 
             if (
-                error ||
+                error
+            ) {
+
+                throw error;
+
+            }
+
+
+            if (
                 !blob
             ) {
 
-                throw (
-                    error ||
-                    new Error(
-                        "Preview konnte nicht geladen werden."
-                    )
+                throw new Error(
+                    "Supabase hat keine Preview-Datei zurückgegeben."
                 );
 
             }
 
 
             if (
-                model.previewURL &&
-                model.previewURL.startsWith(
+                model.previewObjectURL &&
+                model.previewObjectURL.startsWith(
                     "blob:"
                 )
             ) {
 
                 URL.revokeObjectURL(
-                    model.previewURL
+                    model.previewObjectURL
                 );
 
             }
 
 
-            model.previewURL =
+            model.previewObjectURL =
                 URL.createObjectURL(
                     blob
                 );
 
-            model.previewExpiresAt =
-                Number.MAX_SAFE_INTEGER;
+            model.previewURL =
+                model.previewObjectURL;
 
+            model.previewExpiresAt =
+                0;
 
         } catch (error) {
 
             console.warn(
                 "Preview konnte nicht geladen werden:",
-                model.previewPath,
+                path,
                 error
             );
 
@@ -1552,116 +1614,6 @@ async function loadPreviewUrls() {
                 0;
 
         }
-
-    }
-
-}
-
-
-/* =========================================================
-   PREVIEW FEHLER-FALLBACK
-   ========================================================= */
-
-async function recoverPreviewImage(
-    model,
-    image
-) {
-
-    if (
-        !model?.previewPath ||
-        !image
-    ) {
-
-        return;
-
-    }
-
-
-    if (
-        image.dataset.recovering ===
-        "true"
-    ) {
-
-        return;
-
-    }
-
-
-    image.dataset.recovering =
-        "true";
-
-
-    try {
-
-        const {
-            data: blob,
-            error
-        } =
-            await supabase
-                .storage
-                .from(
-                    PREVIEW_BUCKET
-                )
-                .download(
-                    model.previewPath
-                );
-
-
-        if (
-            error ||
-            !blob
-        ) {
-
-            throw (
-                error ||
-                new Error(
-                    "Preview konnte nicht geladen werden."
-                )
-            );
-
-        }
-
-
-        if (
-            model.previewURL &&
-            model.previewURL.startsWith(
-                "blob:"
-            )
-        ) {
-
-            URL.revokeObjectURL(
-                model.previewURL
-            );
-
-        }
-
-
-        model.previewURL =
-            URL.createObjectURL(
-                blob
-            );
-
-        model.previewExpiresAt =
-            Number.MAX_SAFE_INTEGER;
-
-        image.src =
-            model.previewURL;
-
-    } catch (error) {
-
-        console.warn(
-            "Preview-Fallback fehlgeschlagen:",
-            error
-        );
-
-        image.parentElement?.classList.add(
-            "preview-load-failed"
-        );
-
-    } finally {
-
-        image.dataset.recovering =
-            "false";
 
     }
 
@@ -2580,6 +2532,22 @@ async function replaceModelFile(
         model.previewPath =
             nextPreviewPath;
 
+        if (
+            model.previewObjectURL &&
+            model.previewObjectURL.startsWith(
+                "blob:"
+            )
+        ) {
+
+            URL.revokeObjectURL(
+                model.previewObjectURL
+            );
+
+        }
+
+        model.previewObjectURL =
+            null;
+
         model.previewURL =
             null;
 
@@ -2811,10 +2779,6 @@ function createModelCard(
                     alt="${escapeHTML(
                         model.name
                     )}"
-                    data-preview-path="${escapeAttribute(
-                        model.previewPath ||
-                        ""
-                    )}"
                 >
             `
 
@@ -3030,29 +2994,6 @@ function createModelCard(
     /*
      * Viewer
      */
-
-    const previewImage =
-        card.querySelector(
-            ".model-preview img"
-        );
-
-
-    if (
-        previewImage
-    ) {
-
-        previewImage.addEventListener(
-            "error",
-            () =>
-                recoverPreviewImage(
-                    model,
-                    previewImage
-                ),
-            { once: true }
-        );
-
-    }
-
 
     card
         .querySelector(
