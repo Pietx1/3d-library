@@ -3851,6 +3851,68 @@ button {
 
 
 /* =====================================================
+   QUEUE HINWEISE
+   ===================================================== */
+
+.queue-notes-preview {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    margin-top: 9px;
+    padding: 9px 11px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface-2);
+    color: var(--text);
+    font-size: 12px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.queue-notes-label {
+    flex-shrink: 0;
+    color: var(--text);
+    font-weight: 750;
+}
+
+.queue-notes-text {
+    min-width: 0;
+    color: var(--muted);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+
+.queue-page-info .queue-notes-preview {
+    display: flex;
+    align-items: flex-start;
+    width: fit-content;
+    max-width: 100%;
+    color: var(--text);
+    white-space: normal;
+}
+
+.queue-page-info .queue-notes-label {
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.45;
+    white-space: nowrap;
+}
+
+.queue-page-info .queue-notes-text {
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.45;
+    font-weight: 550;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    text-overflow: clip;
+    overflow: visible;
+}
+
+
+/* =====================================================
    MOBILE / IOS INPUT ZOOM FIX + POLISH
    ===================================================== */
 
@@ -3895,20 +3957,18 @@ button {
     }
 
     .queue-notes-preview {
-        display: block !important;
-        margin-top: 5px;
-        padding: 6px 8px;
-        border-radius: 8px;
-        background: var(--surface-2);
-        color: var(--muted) !important;
-        line-height: 1.35;
+        margin-top: 7px;
+        padding: 9px 10px;
+        font-size: 12px;
+        line-height: 1.45;
     }
 
     .queue-notes-label {
-        display: inline-block;
-        margin-right: 5px;
-        color: var(--text) !important;
-        font-weight: 700;
+        font-weight: 750;
+    }
+
+    .queue-notes-text {
+        min-width: 0;
     }
 
     .model-card {

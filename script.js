@@ -2727,10 +2727,13 @@ function getVisibleModels() {
 
 
             const tagMatch =
-                activeTag === "all" ||
-                model.tagIds.includes(
-                    activeTag
-                );
+                activeTag === "all"
+                    ? true
+                    : activeTag === "none"
+                        ? model.tagIds.length === 0
+                        : model.tagIds.includes(
+                            activeTag
+                        );
 
 
             return (
@@ -3487,6 +3490,52 @@ function renderTagFilters() {
 
     tagFilterList.appendChild(
         allButton
+    );
+
+
+    const noneButton =
+        document.createElement(
+            "button"
+        );
+
+
+    noneButton.type =
+        "button";
+
+
+    noneButton.className =
+        "filter-tag " +
+        (
+            activeTag === "none"
+                ? "active"
+                : ""
+        );
+
+
+    noneButton.textContent =
+        "Keine";
+
+
+    noneButton.title =
+        "Nur Modelle ohne Tag anzeigen";
+
+
+    noneButton.addEventListener(
+        "click",
+        () => {
+
+            activeTag =
+                "none";
+
+
+            renderModels();
+
+        }
+    );
+
+
+    tagFilterList.appendChild(
+        noneButton
     );
 
 
@@ -5259,8 +5308,6 @@ async function saveQueueEntry() {
 
                             size,
 
-                            notes,
-
                             position:
                                 nextPosition
 
@@ -5507,11 +5554,15 @@ function createQueueRow(
             </span>
 
             ${
-                entry.notes
+                entry.notes &&
+                entry.notes.trim()
                     ? `
-                        <span class="queue-page-notes">
-                            ${escapeHTML(entry.notes)}
-                        </span>
+                        <div class="queue-notes-preview">
+                            <span class="queue-notes-label">Hinweis:</span>
+                            <span class="queue-notes-text">${escapeHTML(
+                                entry.notes.trim()
+                            )}</span>
+                        </div>
                     `
                     : ""
             }
