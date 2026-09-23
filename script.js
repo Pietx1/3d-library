@@ -5259,6 +5259,8 @@ async function saveQueueEntry() {
 
                             size,
 
+                            notes,
+
                             position:
                                 nextPosition
 
@@ -5503,6 +5505,16 @@ function createQueueRow(
                 )}
 
             </span>
+
+            ${
+                entry.notes
+                    ? `
+                        <span class="queue-page-notes">
+                            ${escapeHTML(entry.notes)}
+                        </span>
+                    `
+                    : ""
+            }
 
         </div>
 
