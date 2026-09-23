@@ -6183,7 +6183,11 @@ async function createPairingCode() {
             error
         } =
             await supabase.rpc(
-                "create_companion_pairing"
+                "create_companion_pairing",
+                {
+                    p_expires_minutes:
+                        10
+                }
             );
 
         if (error) {
@@ -6310,24 +6314,15 @@ function openInBambuStudio(
             model.id
         )}`;
 
-    const link =
-        document.createElement(
-            "a"
-        );
-
-    link.href =
-        protocolUrl;
-
-    link.style.display =
-        "none";
-
-    document.body.appendChild(
-        link
+    /*
+     * Direkte Navigation statt eines künstlich geklickten
+     * unsichtbaren Links. So bleibt der Aufruf an den
+     * Benutzerklick gekoppelt und Windows kann das
+     * registrierte 3dlibrary://-Protokoll übernehmen.
+     */
+    window.location.assign(
+        protocolUrl
     );
-
-    link.click();
-
-    link.remove();
 
 }
 
