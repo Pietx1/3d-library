@@ -6315,13 +6315,43 @@ function openInBambuStudio(
         )}`;
 
     /*
-     * Direkte Navigation statt eines künstlich geklickten
-     * unsichtbaren Links. So bleibt der Aufruf an den
-     * Benutzerklick gekoppelt und Windows kann das
-     * registrierte 3dlibrary://-Protokoll übernehmen.
+     * Nicht mit location.assign() navigieren: Chrome kann ein
+     * unbekanntes Custom-Schema dabei als relativen Pfad behandeln.
+     * Ein echter Link mit href-Attribut löst den registrierten
+     * Windows-Protocol-Handler aus.
      */
-    window.location.assign(
+    const link =
+        document.createElement(
+            "a"
+        );
+
+    link.setAttribute(
+        "href",
         protocolUrl
+    );
+
+    link.setAttribute(
+        "target",
+        "_blank"
+    );
+
+    link.setAttribute(
+        "rel",
+        "noreferrer"
+    );
+
+    link.style.display =
+        "none";
+
+    document.body.appendChild(
+        link
+    );
+
+    link.click();
+
+    setTimeout(
+        () => link.remove(),
+        1000
     );
 
 }
