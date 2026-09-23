@@ -4293,3 +4293,73 @@ button {
         display: none;
     }
 }
+
+
+/* =====================================================
+   LIBRARY UI V2
+   ===================================================== */
+
+.library-search-wrapper {
+    width: 100%;
+    margin: 0 0 24px;
+}
+
+.library-search-wrapper .search-wrapper {
+    width: min(760px, 100%);
+}
+
+.mobile-inline-nav {
+    display: none;
+}
+
+/* Six cards on a wide desktop display. */
+@media (min-width: 1200px) {
+    .model-grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 821px) and (max-width: 1199px) {
+    .model-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 820px) {
+    .mobile-inline-nav {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin: -8px 0 22px;
+        overflow-x: auto;
+    }
+
+    .mobile-inline-nav .mobile-nav-button {
+        flex: 0 0 auto;
+    }
+
+    .library-search-wrapper {
+        margin-bottom: 18px;
+    }
+
+    .library-search-wrapper .search-wrapper {
+        width: 100%;
+    }
+}
+
+@media (max-width: 700px) {
+    .model-actions .bambu-button {
+        display: none !important;
+    }
+
+    .model-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (min-width: 701px) {
+    .tag-list {
+        cursor: default;
+        touch-action: auto;
+    }
+}

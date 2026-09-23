@@ -6330,6 +6330,15 @@ function openInBambuStudio(
         protocolUrl
     );
 
+    link.setAttribute(
+        "target",
+        "_blank"
+    );
+
+    link.setAttribute(
+        "rel",
+        "noreferrer"
+    );
 
     link.style.display =
         "none";
@@ -7613,7 +7622,7 @@ boot();
 
 
 /* =========================================================
-   TAG-LEISTE SCROLLEN – PC
+   TAG-LEISTE
    ========================================================= */
 
 (() => {
@@ -7627,12 +7636,11 @@ boot();
         return;
     }
 
-    let dragging = false;
-    let startX = 0;
-    let startScrollLeft = 0;
-    let moved = false;
-    let suppressNextClick = false;
-
+    /*
+     * Keine Pointer-Drag-Logik mehr: Die Filter-Buttons müssen
+     * ganz normale Klicks bleiben. Die Leiste kann weiterhin
+     * horizontal über Mausrad bzw. die Scrollleiste bewegt werden.
+     */
     strip.addEventListener(
         "wheel",
         event => {
@@ -7665,128 +7673,6 @@ boot();
         {
             passive: false
         }
-    );
-
-    strip.addEventListener(
-        "pointerdown",
-        event => {
-
-            if (
-                event.pointerType !== "mouse"
-            ) {
-                return;
-            }
-
-            dragging =
-                true;
-
-            moved =
-                false;
-
-            startX =
-                event.clientX;
-
-            startScrollLeft =
-                strip.scrollLeft;
-
-            strip.classList.add(
-                "is-dragging"
-            );
-
-            strip.setPointerCapture(
-                event.pointerId
-            );
-
-        }
-    );
-
-    strip.addEventListener(
-        "pointermove",
-        event => {
-
-            if (
-                !dragging ||
-                event.pointerType !== "mouse"
-            ) {
-                return;
-            }
-
-            const distance =
-                event.clientX -
-                startX;
-
-            if (
-                Math.abs(distance) > 4
-            ) {
-                moved =
-                    true;
-            }
-
-            strip.scrollLeft =
-                startScrollLeft -
-                distance;
-
-        }
-    );
-
-    const stopDragging =
-        event => {
-
-            if (!dragging) {
-                return;
-            }
-
-            suppressNextClick =
-                moved;
-
-            dragging =
-                false;
-
-            moved =
-                false;
-
-            strip.classList.remove(
-                "is-dragging"
-            );
-
-            try {
-                strip.releasePointerCapture(
-                    event.pointerId
-                );
-            } catch {}
-
-        };
-
-    strip.addEventListener(
-        "pointerup",
-        stopDragging
-    );
-
-    strip.addEventListener(
-        "pointercancel",
-        stopDragging
-    );
-
-    /*
-     * Wenn wirklich gezogen wurde, soll daraus nicht
-     * versehentlich noch ein Tag-Klick werden.
-     */
-    strip.addEventListener(
-        "click",
-        event => {
-
-            if (!suppressNextClick) {
-                return;
-            }
-
-            event.preventDefault();
-            event.stopPropagation();
-
-            suppressNextClick =
-                false;
-
-        },
-        true
     );
 
 })();

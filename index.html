@@ -149,65 +149,7 @@
              TOPBAR
         ================================================== -->
 
-        <header class="topbar">
-
-            <div class="mobile-topbar">
-
-                <div class="mobile-brand">
-
-                    <div class="logo-icon">
-                        3D
-                    </div>
-
-                    <span>
-                        3D Library
-                    </span>
-
-                </div>
-
-
-                <button
-                    class="mobile-nav-button active"
-                    id="mobileLibraryNav"
-                    type="button"
-                >
-                    Bibliothek
-                </button>
-
-
-                <button
-                    class="mobile-nav-button"
-                    id="mobileQueueNav"
-                    type="button"
-                >
-                    Warteschlange
-                </button>
-
-            </div>
-
-
-            <div class="search-wrapper">
-
-                <span class="search-icon">
-                    ⌕
-                </span>
-
-
-                <input
-                    id="searchInput"
-                    type="text"
-                    placeholder="Modelle suchen..."
-                    autocomplete="off"
-                >
-
-
-                <span class="search-shortcut">
-                    /
-                </span>
-
-            </div>
-
-        </header>
+        
 
 
 
@@ -240,6 +182,77 @@
                     <p class="page-description">
                         Verwalte deine 3MF-Dateien an einem Ort.
                     </p>
+
+                </div>
+
+
+
+                <div class="mobile-inline-nav">
+
+                    <button
+                        class="mobile-nav-button active"
+                        id="mobileLibraryNav"
+                        type="button"
+                    >
+                        Bibliothek
+                    </button>
+
+                    <button
+                        class="mobile-nav-button"
+                        id="mobileQueueNav"
+                        type="button"
+                    >
+                        Warteschlange
+                    </button>
+
+                </div>
+
+
+                <!-- =================================================
+                     UPLOAD
+                ================================================== -->
+
+                <div
+                    class="drop-zone"
+                    id="dropZone"
+                    role="button"
+                    tabindex="0"
+                >
+
+                    <div class="drop-icon">
+                        ↑
+                    </div>
+
+
+                    <div class="drop-text">
+
+                        <strong>
+                            3MF-Dateien hier hineinziehen
+                        </strong>
+
+                        <span>
+                            oder irgendwo hier klicken, um Dateien auszuwählen
+                        </span>
+
+                    </div>
+
+
+                    <button
+                        class="secondary-button"
+                        id="dropUploadButton"
+                        type="button"
+                    >
+                        Dateien auswählen
+                    </button>
+
+
+                    <input
+                        type="file"
+                        id="fileInput"
+                        accept=".3mf"
+                        multiple
+                        hidden
+                    >
 
                 </div>
 
@@ -324,54 +337,28 @@
 
 
 
-                <!-- =================================================
-                     UPLOAD
-                ================================================== -->
+                <div class="library-search-wrapper">
 
-                <div
-                    class="drop-zone"
-                    id="dropZone"
-                    role="button"
-                    tabindex="0"
-                >
+                    <div class="search-wrapper">
 
-                    <div class="drop-icon">
-                        ↑
-                    </div>
+                        <span class="search-icon">
+                            ⌕
+                        </span>
 
+                        <input
+                            id="searchInput"
+                            type="text"
+                            placeholder="Modelle suchen..."
+                            autocomplete="off"
+                        >
 
-                    <div class="drop-text">
-
-                        <strong>
-                            3MF-Dateien hier hineinziehen
-                        </strong>
-
-                        <span>
-                            oder irgendwo hier klicken, um Dateien auszuwählen
+                        <span class="search-shortcut">
+                            /
                         </span>
 
                     </div>
 
-
-                    <button
-                        class="secondary-button"
-                        id="dropUploadButton"
-                        type="button"
-                    >
-                        Dateien auswählen
-                    </button>
-
-
-                    <input
-                        type="file"
-                        id="fileInput"
-                        accept=".3mf"
-                        multiple
-                        hidden
-                    >
-
                 </div>
-
 
 
                 <!-- =================================================
