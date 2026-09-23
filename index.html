@@ -102,6 +102,15 @@
 
         <div class="sidebar-bottom">
 
+            <button
+                class="companion-sidebar-button"
+                id="companionButton"
+                type="button"
+            >
+                <span class="companion-sidebar-icon">↗</span>
+                <span>Companion</span>
+            </button>
+
             <div class="sidebar-status">
 
                 <span class="status-dot"></span>
@@ -610,6 +619,99 @@
             </div>
         </div>
     </div>
+
+
+    <!-- =====================================================
+         COMPANION
+    ====================================================== -->
+
+    <div
+        class="modal hidden"
+        id="companionModal"
+        aria-modal="true"
+        role="dialog"
+    >
+
+        <div
+            class="modal-backdrop"
+            data-close="companion"
+        ></div>
+
+        <div class="small-modal companion-modal-window">
+
+            <div class="small-modal-header">
+
+                <div>
+                    <span class="viewer-label">
+                        WINDOWS
+                    </span>
+
+                    <h2>3D Library Companion</h2>
+                </div>
+
+                <button
+                    class="close-button light-close"
+                    id="closeCompanion"
+                    type="button"
+                    aria-label="Schließen"
+                >
+                    ×
+                </button>
+
+            </div>
+
+            <p class="companion-modal-description">
+                Verbinde deinen Windows-PC einmalig mit deiner Library. Danach kannst du 3MF-Projekte direkt in Bambu Studio öffnen und Änderungen automatisch zurücksynchronisieren.
+            </p>
+
+            <button
+                class="primary-button"
+                id="createCompanionPairing"
+                type="button"
+            >
+                Pairing-Code erzeugen
+            </button>
+
+            <div
+                class="companion-code-area hidden"
+                id="companionCodeArea"
+            >
+
+                <div class="companion-code-label">
+                    Pairing-Code
+                </div>
+
+                <div
+                    class="companion-code"
+                    id="companionCode"
+                >
+                    –
+                </div>
+
+                <div
+                    class="companion-expires"
+                    id="companionExpires"
+                ></div>
+
+                <button
+                    class="secondary-button"
+                    id="copyCompanionCode"
+                    type="button"
+                >
+                    Code kopieren
+                </button>
+
+                <p class="companion-modal-help">
+                    Öffne jetzt den Companion auf deinem Windows-PC und gib diesen Code dort ein. Er ist nur wenige Minuten gültig und kann nur einmal verwendet werden.
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
 <!-- =====================================================
          TAG ERSTELLEN
     ====================================================== -->

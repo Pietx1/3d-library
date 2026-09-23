@@ -243,6 +243,33 @@ const closePlatePreview =
     document.getElementById("closePlatePreview");
 
 
+/* Companion */
+
+const companionButton =
+    document.getElementById("companionButton");
+
+const companionModal =
+    document.getElementById("companionModal");
+
+const createCompanionPairing =
+    document.getElementById("createCompanionPairing");
+
+const companionCodeArea =
+    document.getElementById("companionCodeArea");
+
+const companionCode =
+    document.getElementById("companionCode");
+
+const companionExpires =
+    document.getElementById("companionExpires");
+
+const copyCompanionCode =
+    document.getElementById("copyCompanionCode");
+
+const closeCompanion =
+    document.getElementById("closeCompanion");
+
+
 /* Toast */
 
 const toastContainer =
@@ -2977,6 +3004,15 @@ function createModelCard(
 
 
                 <button
+                    class="card-button bambu-button"
+                    type="button"
+                    data-action="bambu"
+                >
+                    Bambu Studio öffnen
+                </button>
+
+
+                <button
                     class="card-button"
                     type="button"
                     data-action="queue"
@@ -3031,6 +3067,23 @@ function createModelCard(
             "click",
             () =>
                 openEditModal(
+                    model
+                )
+        );
+
+
+    /*
+     * Bambu Studio
+     */
+
+    card
+        .querySelector(
+            '[data-action="bambu"]'
+        )
+        .addEventListener(
+            "click",
+            () =>
+                openInBambuStudio(
                     model
                 )
         );
@@ -6069,6 +6122,221 @@ async function normalizeQueuePositions() {
 
 
 /* =========================================================
+   COMPANION PAIRING
+   ========================================================= */
+
+function openCompanionModal() {
+
+    companionModal.classList.remove(
+        "hidden"
+    );
+
+    companionCodeArea.classList.add(
+        "hidden"
+    );
+
+    companionCode.textContent =
+        "–";
+
+    companionExpires.textContent =
+        "";
+
+}
+
+
+function closeCompanionModal() {
+
+    companionModal.classList.add(
+        "hidden"
+    );
+
+}
+
+
+async function createPairingCode() {
+
+    if (!currentUser) {
+
+        showToast(
+            "Bitte zuerst anmelden.",
+            "error"
+        );
+
+        return;
+
+    }
+
+    createCompanionPairing.disabled =
+        true;
+
+    createCompanionPairing.textContent =
+        "Code wird erzeugt...";
+
+    companionCodeArea.classList.add(
+        "hidden"
+    );
+
+    try {
+
+        const {
+            data,
+            error
+        } =
+            await supabase.rpc(
+                "create_companion_pairing",
+                {
+                    p_expires_minutes:
+                        10
+                }
+            );
+
+        if (error) {
+            throw error;
+        }
+
+        const pairing =
+            data?.[0];
+
+        if (!pairing?.code) {
+            throw new Error(
+                "Supabase hat keinen Pairing-Code zurückgegeben."
+            );
+        }
+
+        companionCode.textContent =
+            pairing.code;
+
+        companionExpires.textContent =
+            `Gültig bis ${new Date(
+                pairing.expires_at
+            ).toLocaleTimeString(
+                "de-DE",
+                {
+                    hour: "2-digit",
+                    minute: "2-digit"
+                }
+            )}`;
+
+        companionCodeArea.classList.remove(
+            "hidden"
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Companion Pairing:",
+            error
+        );
+
+        showToast(
+            "Der Pairing-Code konnte nicht erzeugt werden.",
+            "error"
+        );
+
+    } finally {
+
+        createCompanionPairing.disabled =
+            false;
+
+        createCompanionPairing.textContent =
+            "Pairing-Code neu erzeugen";
+
+    }
+
+}
+
+
+async function copyCompanionPairingCode() {
+
+    const code =
+        companionCode.textContent.trim();
+
+    if (!code || code === "–") {
+        return;
+    }
+
+    try {
+
+        await navigator.clipboard.writeText(
+            code
+        );
+
+        showToast(
+            "Pairing-Code kopiert."
+        );
+
+    } catch {
+
+        showToast(
+            "Der Pairing-Code konnte nicht kopiert werden.",
+            "error"
+        );
+
+    }
+
+}
+
+
+companionButton.addEventListener(
+    "click",
+    openCompanionModal
+);
+
+
+createCompanionPairing.addEventListener(
+    "click",
+    createPairingCode
+);
+
+
+copyCompanionCode.addEventListener(
+    "click",
+    copyCompanionPairingCode
+);
+
+
+closeCompanion.addEventListener(
+    "click",
+    closeCompanionModal
+);
+
+
+/* =========================================================
+   BAMBU STUDIO
+   ========================================================= */
+
+function openInBambuStudio(
+    model
+) {
+
+    const protocolUrl =
+        `3dlibrary://open?model=${encodeURIComponent(
+            model.id
+        )}`;
+
+    const link =
+        document.createElement(
+            "a"
+        );
+
+    link.href =
+        protocolUrl;
+
+    link.style.display =
+        "none";
+
+    document.body.appendChild(
+        link
+    );
+
+    link.click();
+
+    link.remove();
+
+}
+
+
+/* =========================================================
    ALLE DRUCKPLATTEN
    ========================================================= */
 
@@ -7336,18 +7604,6 @@ boot();
    TAG-LEISTE SCROLLEN – PC
    ========================================================= */
 
-/*
- * Wichtig:
- * Die Tag-Leiste darf normale Klicks auf einzelne Tags
- * NICHT abfangen. Deshalb verwenden wir hier bewusst
- * normales Mouse-Handling ohne setPointerCapture().
- *
- * Ergebnis:
- * - Klick auf Tag -> Tag wird ausgewählt
- * - Linke Maustaste ziehen -> Leiste scrollt
- * - Mausrad -> Leiste scrollt horizontal
- */
-
 (() => {
 
     const strip =
@@ -7359,22 +7615,11 @@ boot();
         return;
     }
 
-
-    let dragging =
-        false;
-
-    let startX =
-        0;
-
-    let startScrollLeft =
-        0;
-
-    let moved =
-        false;
-
-    let suppressNextClick =
-        false;
-
+    let dragging = false;
+    let startX = 0;
+    let startScrollLeft = 0;
+    let moved = false;
+    let suppressNextClick = false;
 
     strip.addEventListener(
         "wheel",
@@ -7387,17 +7632,11 @@ boot();
                 return;
             }
 
-
             const vertical =
-                Math.abs(
-                    event.deltaY
-                );
+                Math.abs(event.deltaY);
 
             const horizontal =
-                Math.abs(
-                    event.deltaX
-                );
-
+                Math.abs(event.deltaX);
 
             if (
                 vertical > horizontal
@@ -7416,30 +7655,20 @@ boot();
         }
     );
 
-
     strip.addEventListener(
-        "mousedown",
+        "pointerdown",
         event => {
 
-            /*
-             * Nur linke Maustaste.
-             * Bei Rechtsklick/Mittelklick bleibt
-             * das normale Browser-Verhalten erhalten.
-             */
             if (
-                event.button !== 0
+                event.pointerType !== "mouse"
             ) {
                 return;
             }
-
 
             dragging =
                 true;
 
             moved =
-                false;
-
-            suppressNextClick =
                 false;
 
             startX =
@@ -7452,75 +7681,54 @@ boot();
                 "is-dragging"
             );
 
+            strip.setPointerCapture(
+                event.pointerId
+            );
+
         }
     );
 
-
-    document.addEventListener(
-        "mousemove",
+    strip.addEventListener(
+        "pointermove",
         event => {
 
             if (
-                !dragging
+                !dragging ||
+                event.pointerType !== "mouse"
             ) {
                 return;
             }
-
 
             const distance =
                 event.clientX -
                 startX;
 
-
             if (
-                Math.abs(
-                    distance
-                ) > 4
+                Math.abs(distance) > 4
             ) {
-
                 moved =
                     true;
-
             }
 
-
-            if (
-                moved
-            ) {
-
-                /*
-                 * Erst ab der tatsächlichen
-                 * Bewegung den Text/Tag-Klick
-                 * nicht mehr als Auswahl behandeln.
-                 */
-                event.preventDefault();
-
-                strip.scrollLeft =
-                    startScrollLeft -
-                    distance;
-
-            }
+            strip.scrollLeft =
+                startScrollLeft -
+                distance;
 
         }
     );
 
+    const stopDragging =
+        event => {
 
-    document.addEventListener(
-        "mouseup",
-        () => {
-
-            if (
-                !dragging
-            ) {
+            if (!dragging) {
                 return;
             }
 
+            suppressNextClick =
+                moved;
 
             dragging =
                 false;
-
-            suppressNextClick =
-                moved;
 
             moved =
                 false;
@@ -7529,31 +7737,37 @@ boot();
                 "is-dragging"
             );
 
-        }
+            try {
+                strip.releasePointerCapture(
+                    event.pointerId
+                );
+            } catch {}
+
+        };
+
+    strip.addEventListener(
+        "pointerup",
+        stopDragging
     );
 
+    strip.addEventListener(
+        "pointercancel",
+        stopDragging
+    );
 
     /*
-     * Ein Klick nach einem echten Ziehen wird
-     * einmalig unterdrückt.
-     *
-     * Ein normaler Klick ohne Ziehen läuft
-     * vollständig bis zum eigentlichen Tag-Button
-     * durch und funktioniert daher wieder.
+     * Wenn wirklich gezogen wurde, soll daraus nicht
+     * versehentlich noch ein Tag-Klick werden.
      */
     strip.addEventListener(
         "click",
         event => {
 
-            if (
-                !suppressNextClick
-            ) {
+            if (!suppressNextClick) {
                 return;
             }
 
-
             event.preventDefault();
-
             event.stopPropagation();
 
             suppressNextClick =
@@ -7564,4 +7778,3 @@ boot();
     );
 
 })();
-

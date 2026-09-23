@@ -1666,6 +1666,9 @@ button {
     display:
         flex;
 
+    flex-wrap:
+        wrap;
+
     gap:
         7px;
 
@@ -4206,3 +4209,87 @@ button {
 
 }
 
+
+
+/* =========================================================
+   COMPANION + BAMBU STUDIO
+   ========================================================= */
+
+.companion-sidebar-button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color, rgba(0,0,0,.08));
+    border-radius: 12px;
+    background: var(--surface-color, #ffffff);
+    color: var(--text-color, #17171a);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.companion-sidebar-button:hover {
+    background: #f0f0f3;
+}
+
+.companion-sidebar-icon {
+    font-size: 15px;
+}
+
+.bambu-button {
+    width: 100%;
+    flex-basis: 100%;
+}
+
+.companion-modal-window {
+    max-width: 520px;
+}
+
+.companion-modal-description,
+.companion-modal-help {
+    margin: 0 0 16px;
+    color: #6f6f77;
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.companion-code-area {
+    margin-top: 18px;
+    padding: 18px;
+    border-radius: 16px;
+    background: #f0f0f3;
+    text-align: center;
+}
+
+.companion-code-label {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    color: #777780;
+    text-transform: uppercase;
+}
+
+.companion-code {
+    margin: 8px 0 4px;
+    font-size: 28px;
+    line-height: 1.2;
+    letter-spacing: .08em;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.companion-expires {
+    margin-bottom: 12px;
+    color: #777780;
+    font-size: 12px;
+}
+
+@media (max-width: 700px) {
+    .companion-sidebar-button {
+        display: none;
+    }
+}
