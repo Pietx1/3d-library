@@ -6183,11 +6183,7 @@ async function createPairingCode() {
             error
         } =
             await supabase.rpc(
-                "create_companion_pairing",
-                {
-                    p_expires_minutes:
-                        10
-                }
+                "create_companion_pairing"
             );
 
         if (error) {
