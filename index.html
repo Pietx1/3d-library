@@ -12,6 +12,10 @@
 
     <title>3D Library</title>
 
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+    <meta name="application-name" content="3D Library">
+
     <meta name="theme-color" content="#f5f5f7">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -101,6 +105,15 @@
 
 
         <div class="sidebar-bottom">
+
+            <button
+                class="companion-sidebar-button hidden"
+                id="installAppButton"
+                type="button"
+            >
+                <span class="companion-sidebar-icon">↥</span>
+                <span>Als App installieren</span>
+            </button>
 
             <button
                 class="companion-sidebar-button"
@@ -1176,6 +1189,40 @@
         type="module"
         src="script.js"
     ></script>
+
+    <script>
+        (() => {
+            if ("serviceWorker" in navigator) {
+                window.addEventListener("load", () => {
+                    navigator.serviceWorker.register("./sw.js").catch((error) => {
+                        console.error("PWA Service Worker:", error);
+                    });
+                });
+            }
+
+            const installButton = document.getElementById("installAppButton");
+            let deferredPrompt = null;
+
+            window.addEventListener("beforeinstallprompt", (event) => {
+                event.preventDefault();
+                deferredPrompt = event;
+                installButton?.classList.remove("hidden");
+            });
+
+            installButton?.addEventListener("click", async () => {
+                if (!deferredPrompt) return;
+                deferredPrompt.prompt();
+                await deferredPrompt.userChoice;
+                deferredPrompt = null;
+                installButton.classList.add("hidden");
+            });
+
+            window.addEventListener("appinstalled", () => {
+                deferredPrompt = null;
+                installButton?.classList.add("hidden");
+            });
+        })();
+    </script>
 
 </body>
 

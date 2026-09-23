@@ -1,0 +1,27 @@
+{
+  "name": "3D Library",
+  "short_name": "3D Library",
+  "id": "/3d-library/",
+  "start_url": "/3d-library/",
+  "scope": "/3d-library/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "background_color": "#f5f5f7",
+  "theme_color": "#f5f5f7",
+  "description": "Deine 3D-Modellbibliothek",
+  "lang": "de-DE",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
