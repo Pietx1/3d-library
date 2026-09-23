@@ -6310,7 +6310,7 @@ function openInBambuStudio(
 ) {
 
     const protocolUrl =
-        `3dlibrary://open?model=${encodeURIComponent(
+        `library3d://open?model=${encodeURIComponent(
             model.id
         )}`;
 
@@ -6330,15 +6330,6 @@ function openInBambuStudio(
         protocolUrl
     );
 
-    link.setAttribute(
-        "target",
-        "_blank"
-    );
-
-    link.setAttribute(
-        "rel",
-        "noreferrer"
-    );
 
     link.style.display =
         "none";
