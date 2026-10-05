@@ -168,7 +168,6 @@ const editTagGrid =
 const replaceFileInput =
     document.getElementById("replaceFileInput");
 
-
 if (replaceFileInput) {
     replaceFileInput.accept = ".3mf,.stl";
 }
@@ -359,213 +358,528 @@ const SIGNED_URL_SECONDS =
    IMPORT – 3MF / STL / ZIP
    ========================================================= */
 
-const SUPPORTED_EXTENSIONS = [
+const SUPPORTED_IMPORT_EXTENSIONS = [
     ".3mf",
-    ".stl"
+    ".stl",
+    ".zip"
 ];
 
-if (fileInput) {
-    fileInput.accept = ".3mf,.stl,.zip";
-}
-
-
-if (dropZone) {
-    const dropHeading = dropZone.querySelector(".drop-text strong");
-    const dropDescription = dropZone.querySelector(".drop-text span");
-    const dropButton = dropZone.querySelector("#dropUploadButton");
-
-    if (dropHeading) {
-        dropHeading.textContent =
-            "3MF-, STL- oder ZIP-Dateien hier hineinziehen";
-    }
-
-    if (dropDescription) {
-        dropDescription.textContent =
-            "ZIP-Dateien werden geöffnet und du wählst die gewünschten Dateien aus";
-    }
-
-    if (dropButton) {
-        dropButton.textContent = "Dateien auswählen";
-    }
-}
-
-(function addDesktopOnlyBambuStyle() {
-    if (document.getElementById("desktopOnlyBambuStyle")) {
-        return;
-    }
-
-    const style = document.createElement("style");
-    style.id = "desktopOnlyBambuStyle";
-    style.textContent = `
-        @media (max-width: 767px) {
-            .bambu-button {
-                display: none !important;
-            }
-        }
-    `;
-    document.head.appendChild(style);
-})();
 
 function getFileExtension(name = "") {
-    const dot = name.lastIndexOf(".");
-    return dot === -1 ? "" : name.slice(dot).toLowerCase();
+
+    const cleanName =
+        String(name)
+            .replace(/\\/g, "/")
+            .split("/")
+            .pop();
+
+    const dot =
+        cleanName.lastIndexOf(".");
+
+    return dot >= 0
+        ? cleanName.slice(dot).toLowerCase()
+        : "";
+
 }
+
 
 function getBaseName(name = "") {
-    return name
-        .replace(/\/g, "/")
-        .split("/")
-        .pop()
-        .replace(/\.[^.]+$/i, "");
+
+    const cleanName =
+        String(name)
+            .replace(/\\/g, "/")
+            .split("/")
+            .pop();
+
+    return cleanName.replace(
+        /\\.[^.]+$/i,
+        ""
+    );
+
 }
 
-function isSupportedImportName(name = "") {
-    return SUPPORTED_EXTENSIONS.includes(getFileExtension(name));
-}
 
 function getImportMimeType(extension) {
-    return extension === ".stl"
-        ? "model/stl"
-        : "application/vnd.ms-package.3dmanufacturing-3dmodel+xml";
+
+    if (extension === ".stl") {
+        return "model/stl";
+    }
+
+    return "application/vnd.ms-package.3dmanufacturing-3dmodel+xml";
+
 }
 
-function formatImportSize(bytes = 0) {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+
+function isSupportedModelFile(name = "") {
+
+    return [
+        ".3mf",
+        ".stl"
+    ].includes(
+        getFileExtension(name)
+    );
+
 }
 
-function ensureZipImportStyles() {
-    if (document.getElementById("zipImportStyles")) return;
+
+function installZipImportStyles() {
+
+    if (document.getElementById("zipImportStyles")) {
+        return;
+    }
 
     const style = document.createElement("style");
     style.id = "zipImportStyles";
     style.textContent = `
         .zip-import-modal {
-            position: fixed; inset: 0; z-index: 1000;
-            display: flex; align-items: center; justify-content: center;
-            padding: 18px; background: rgba(15,15,18,.42);
+            position: fixed;
+            inset: 0;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            background: rgba(15,15,18,.44);
             backdrop-filter: blur(8px);
         }
         .zip-import-window {
-            width: min(760px,100%); max-height: min(760px,calc(100vh - 36px));
-            display: flex; flex-direction: column; overflow: hidden;
-            border: 1px solid var(--border); border-radius: 22px;
-            background: var(--surface); box-shadow: 0 30px 90px rgba(0,0,0,.22);
+            width: min(820px, 100%);
+            max-height: min(820px, calc(100vh - 36px));
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            background: var(--surface);
+            box-shadow: 0 30px 90px rgba(0,0,0,.24);
         }
-        .zip-import-header { padding: 22px 24px 15px; border-bottom: 1px solid var(--border); }
-        .zip-import-header h2 { margin: 0 0 6px; font-size: 22px; letter-spacing: -.03em; }
-        .zip-import-header p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
-        .zip-import-toolbar { display:flex; flex-wrap:wrap; gap:8px; padding:12px 24px; border-bottom:1px solid var(--border); background:var(--surface-2); }
-        .zip-import-tool { border:1px solid var(--border); border-radius:9px; background:white; padding:7px 10px; color:var(--text); font-size:11px; cursor:pointer; }
-        .zip-import-tool:hover { background:#f8f8f9; }
-        .zip-import-list { min-height:0; overflow:auto; padding:10px 14px; }
-        .zip-import-row { display:grid; grid-template-columns:22px minmax(0,1fr) auto; gap:10px; align-items:center; padding:11px 10px; border-radius:12px; }
-        .zip-import-row:hover { background:var(--surface-2); }
-        .zip-import-row.is-duplicate { background:#fff6f5; }
-        .zip-import-file { min-width:0; }
-        .zip-import-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text); font-size:13px; font-weight:650; }
-        .zip-import-path { margin-top:3px; overflow-wrap:anywhere; color:var(--muted-2); font-size:10px; line-height:1.4; }
-        .zip-import-status { max-width:240px; text-align:right; color:var(--muted); font-size:10px; line-height:1.35; }
-        .zip-import-status.duplicate { color:#b5473d; font-weight:650; }
-        .zip-import-footer { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 24px; border-top:1px solid var(--border); }
-        .zip-import-count { min-width:0; color:var(--muted); font-size:11px; line-height:1.4; }
-        .zip-import-actions { display:flex; gap:8px; flex-shrink:0; }
-        @media (max-width:700px) {
-            .zip-import-window { max-height:calc(100vh - 24px); border-radius:18px; }
-            .zip-import-header,.zip-import-footer,.zip-import-toolbar { padding-left:16px; padding-right:16px; }
-            .zip-import-row { grid-template-columns:22px minmax(0,1fr); }
-            .zip-import-status { grid-column:2; max-width:none; text-align:left; }
-            .zip-import-footer { align-items:stretch; flex-direction:column; }
-            .zip-import-actions { width:100%; }
-            .zip-import-actions>button { flex:1; }
+        .zip-import-header {
+            padding: 22px 24px 14px;
+            border-bottom: 1px solid var(--border);
+        }
+        .zip-import-header h2 {
+            margin: 0 0 6px;
+            font-size: 22px;
+        }
+        .zip-import-header p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        .zip-import-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 12px 24px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface-2);
+        }
+        .zip-import-tool {
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            padding: 8px 11px;
+            background: white;
+            color: var(--text);
+            font-size: 11px;
+            cursor: pointer;
+        }
+        .zip-import-tool:hover {
+            background: #f7f7f8;
+        }
+        .zip-import-list {
+            min-height: 0;
+            overflow: auto;
+            padding: 8px 14px;
+        }
+        .zip-import-row {
+            display: grid;
+            grid-template-columns: 22px minmax(0,1fr) auto;
+            align-items: center;
+            gap: 12px;
+            padding: 11px 10px;
+            border-radius: 12px;
+        }
+        .zip-import-row:hover {
+            background: var(--surface-2);
+        }
+        .zip-import-row.is-duplicate {
+            background: #fff6f5;
+        }
+        .zip-import-name {
+            overflow-wrap: anywhere;
+            color: var(--text);
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .zip-import-path {
+            margin-top: 3px;
+            overflow-wrap: anywhere;
+            color: var(--muted-2);
+            font-size: 10px;
+            line-height: 1.4;
+        }
+        .zip-import-status {
+            max-width: 260px;
+            text-align: right;
+            color: var(--muted);
+            font-size: 10px;
+            line-height: 1.4;
+        }
+        .zip-import-status.duplicate {
+            color: #b5473d;
+            font-weight: 750;
+        }
+        .zip-import-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 14px 24px;
+            border-top: 1px solid var(--border);
+        }
+        .zip-import-count {
+            min-width: 0;
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.45;
+        }
+        .zip-import-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        @media (max-width: 700px) {
+            .zip-import-window {
+                max-height: calc(100vh - 24px);
+                border-radius: 16px;
+            }
+            .zip-import-header,
+            .zip-import-toolbar,
+            .zip-import-footer {
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+            .zip-import-row {
+                grid-template-columns: 22px minmax(0,1fr);
+            }
+            .zip-import-status {
+                grid-column: 2;
+                max-width: none;
+                text-align: left;
+            }
+            .zip-import-footer {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .zip-import-actions {
+                width: 100%;
+            }
+            .zip-import-actions > button {
+                flex: 1;
+            }
         }
     `;
     document.head.appendChild(style);
 }
 
-function buildZipImportDialog(items, zipFile) {
-    ensureZipImportStyles();
 
-    const overlay=document.createElement("div");
-    overlay.className="zip-import-modal";
-    overlay.setAttribute("role","dialog");
-    overlay.setAttribute("aria-modal","true");
+function formatImportSize(bytes = 0) {
 
-    const win=document.createElement("div");
-    win.className="zip-import-window";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) {
+        return `${(bytes / 1024).toFixed(1)} KB`;
+    }
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 
-    const header=document.createElement("div");
-    header.className="zip-import-header";
-    header.innerHTML=`<h2>Dateien aus ZIP auswählen</h2><p>${escapeHTML(zipFile.name)} · ${items.length} unterstützte Datei${items.length===1?"":"en"} gefunden. Es werden nur 3MF- und STL-Dateien angezeigt.</p>`;
+}
 
-    const toolbar=document.createElement("div");
-    toolbar.className="zip-import-toolbar";
-    const list=document.createElement("div");
-    list.className="zip-import-list";
-    const footer=document.createElement("div");
-    footer.className="zip-import-footer";
-    const count=document.createElement("div");
-    count.className="zip-import-count";
-    const actions=document.createElement("div");
-    actions.className="zip-import-actions";
 
-    const cancel=document.createElement("button");
-    cancel.type="button"; cancel.className="secondary-button"; cancel.textContent="Abbrechen";
-    const importButton=document.createElement("button");
-    importButton.type="button"; importButton.className="primary-button";
+async function inspectZipFile(zipFile) {
 
-    function updateCount(){
-        const selected=items.filter(item=>item.selected).length;
-        const duplicates=items.filter(item=>item.duplicateMessage).length;
-        count.textContent=`${selected} ausgewählt${duplicates?` · ${duplicates} doppelte Datei${duplicates===1?"":"en"}`:""}`;
-        importButton.textContent=selected?`${selected} Datei${selected===1?"":"en"} importieren`:"Importieren";
-        importButton.disabled=selected===0;
+    if (typeof JSZip === "undefined") {
+        throw new Error(
+            "ZIP-Unterstützung ist nicht geladen. Bitte die Seite einmal vollständig neu laden."
+        );
     }
 
-    function setSelection(predicate){
-        items.forEach(item=>{
-            item.selected=predicate(item);
-            if(item.input) item.input.checked=item.selected;
+    const zip =
+        await JSZip.loadAsync(
+            await zipFile.arrayBuffer()
+        );
+
+    const entries =
+        Object.values(zip.files)
+            .filter(entry => !entry.dir)
+            .filter(entry => isSupportedModelFile(entry.name))
+            .filter(entry => !/^(__MACOSX|\.DS_Store)(\/|$)/i.test(entry.name));
+
+    const items = [];
+    const seenHashes = new Map();
+
+    for (const entry of entries) {
+
+        const bytes =
+            await entry.async("uint8array");
+
+        const hash =
+            await createHash(
+                bytes.buffer
+            );
+
+        const extension =
+            getFileExtension(entry.name);
+
+        const path =
+            String(entry.name).replace(
+                /\\/g,
+                "/"
+            );
+
+        const name =
+            path.split("/").pop() || path;
+
+        const existing =
+            models.find(
+                model => model.fileHash === hash
+            );
+
+        const previous =
+            seenHashes.get(hash);
+
+        items.push({
+            bytes,
+            hash,
+            extension,
+            name,
+            path,
+            size: bytes.byteLength,
+            selected:
+                !existing && !previous,
+            duplicateMessage:
+                existing
+                    ? `Bereits vorhanden: ${existing.name}`
+                    : previous
+                        ? `Doppelt in dieser ZIP: ${previous.name}`
+                        : ""
+        });
+
+        if (!seenHashes.has(hash)) {
+            seenHashes.set(
+                hash,
+                items[items.length - 1]
+            );
+        }
+
+    }
+
+    return items;
+
+}
+
+
+async function showZipSelectionDialog(items, zipFile) {
+
+    installZipImportStyles();
+
+    const overlay =
+        document.createElement("div");
+
+    overlay.className =
+        "zip-import-modal";
+
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+
+    const win =
+        document.createElement("div");
+
+    win.className =
+        "zip-import-window";
+
+    const header =
+        document.createElement("div");
+
+    header.className =
+        "zip-import-header";
+
+    header.innerHTML = `
+        <h2>Dateien aus ZIP auswählen</h2>
+        <p>${escapeHTML(zipFile.name)} · ${items.length} unterstützte Datei${items.length === 1 ? "" : "en"} gefunden. Es werden nur 3MF- und STL-Dateien angezeigt.</p>
+    `;
+
+    const toolbar =
+        document.createElement("div");
+
+    toolbar.className =
+        "zip-import-toolbar";
+
+    const list =
+        document.createElement("div");
+
+    list.className =
+        "zip-import-list";
+
+    const footer =
+        document.createElement("div");
+
+    footer.className =
+        "zip-import-footer";
+
+    const count =
+        document.createElement("div");
+
+    count.className =
+        "zip-import-count";
+
+    const actions =
+        document.createElement("div");
+
+    actions.className =
+        "zip-import-actions";
+
+    const cancel =
+        document.createElement("button");
+
+    cancel.type = "button";
+    cancel.className = "secondary-button";
+    cancel.textContent = "Abbrechen";
+
+    const importButton =
+        document.createElement("button");
+
+    importButton.type = "button";
+    importButton.className = "primary-button";
+
+    const updateCount = () => {
+
+        const selected =
+            items.filter(item => item.selected).length;
+
+        const duplicateCount =
+            items.filter(item => item.duplicateMessage).length;
+
+        count.textContent =
+            `${selected} ausgewählt${duplicateCount ? ` · ${duplicateCount} doppelt/bereits vorhanden` : ""}`;
+
+        importButton.textContent =
+            selected
+                ? `${selected} Datei${selected === 1 ? "" : "en"} importieren`
+                : "Importieren";
+
+        importButton.disabled =
+            selected === 0;
+
+    };
+
+    const setSelection = predicate => {
+        items.forEach(item => {
+            item.selected = predicate(item);
+            if (item.input) {
+                item.input.checked = item.selected;
+            }
         });
         updateCount();
-    }
+    };
 
-    const makeTool=(label,fn)=>{
-        const button=document.createElement("button");
-        button.type="button"; button.className="zip-import-tool"; button.textContent=label;
-        button.addEventListener("click",fn); return button;
+    const makeTool = (label, predicate) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "zip-import-tool";
+        button.textContent = label;
+        button.addEventListener("click", () => setSelection(predicate));
+        return button;
     };
 
     toolbar.append(
-        makeTool("Alle",()=>setSelection(()=>true)),
-        makeTool("Alle 3MF",()=>setSelection(item=>item.extension===".3mf")),
-        makeTool("Alle STL",()=>setSelection(item=>item.extension===".stl")),
-        makeTool("Alle abwählen",()=>setSelection(()=>false))
+        makeTool("Alle", () => true),
+        makeTool("Alle 3MF", item => item.extension === ".3mf"),
+        makeTool("Alle STL", item => item.extension === ".stl"),
+        makeTool("Alle abwählen", () => false)
     );
 
-    items.forEach(item=>{
-        const row=document.createElement("label");
-        row.className=`zip-import-row${item.duplicateMessage?" is-duplicate":""}`;
-        const input=document.createElement("input");
-        input.type="checkbox"; input.checked=item.selected; item.input=input;
-        input.addEventListener("change",()=>{ item.selected=input.checked; updateCount(); });
-        const info=document.createElement("div"); info.className="zip-import-file";
-        info.innerHTML=`<div class="zip-import-name">${escapeHTML(item.name)}</div><div class="zip-import-path">${escapeHTML(item.path)} · ${formatImportSize(item.size)}</div>`;
-        const status=document.createElement("div");
-        status.className=`zip-import-status${item.duplicateMessage?" duplicate":""}`;
-        status.textContent=item.duplicateMessage || item.extension.toUpperCase().slice(1);
-        row.append(input,info,status); list.appendChild(row);
+    items.forEach(item => {
+
+        const row =
+            document.createElement("label");
+
+        row.className =
+            `zip-import-row${item.duplicateMessage ? " is-duplicate" : ""}`;
+
+        const input =
+            document.createElement("input");
+
+        input.type = "checkbox";
+        input.checked = item.selected;
+        item.input = input;
+
+        input.addEventListener(
+            "click",
+            event => event.stopPropagation()
+        );
+
+        input.addEventListener(
+            "change",
+            () => {
+                item.selected = input.checked;
+                updateCount();
+            }
+        );
+
+        const info =
+            document.createElement("div");
+
+        info.className = "zip-import-file";
+
+        info.innerHTML = `
+            <div class="zip-import-name">${escapeHTML(item.name)}</div>
+            <div class="zip-import-path">${escapeHTML(item.path)} · ${formatImportSize(item.size)}</div>
+        `;
+
+        const status =
+            document.createElement("div");
+
+        status.className =
+            `zip-import-status${item.duplicateMessage ? " duplicate" : ""}`;
+
+        status.textContent =
+            item.duplicateMessage ||
+            item.extension.toUpperCase().slice(1);
+
+        row.append(
+            input,
+            info,
+            status
+        );
+
+        list.appendChild(row);
+
     });
 
-    actions.append(cancel,importButton);
-    footer.append(count,actions);
-    win.append(header,toolbar,list,footer);
+    actions.append(
+        cancel,
+        importButton
+    );
+
+    footer.append(
+        count,
+        actions
+    );
+
+    win.append(
+        header,
+        toolbar,
+        list,
+        footer
+    );
+
     overlay.appendChild(win);
     document.body.appendChild(overlay);
+
     updateCount();
 
-    return new Promise(resolve=>{
+    return new Promise(resolve => {
+
         let settled = false;
 
         const finish = value => {
@@ -575,63 +889,119 @@ function buildZipImportDialog(items, zipFile) {
             resolve(value);
         };
 
-        cancel.addEventListener("click", () => finish([]));
+        cancel.addEventListener(
+            "click",
+            () => finish([])
+        );
 
-        overlay.addEventListener("click", event => {
-            if (event.target === overlay) {
-                finish([]);
+        overlay.addEventListener(
+            "click",
+            event => {
+                if (event.target === overlay) {
+                    finish([]);
+                }
             }
-        });
+        );
 
-        importButton.addEventListener("click", () => {
-            const selected = items.filter(item => item.selected);
-            if (!selected.length) return;
-            finish(selected);
-        });
+        importButton.addEventListener(
+            "click",
+            () => finish(
+                items.filter(item => item.selected)
+            )
+        );
+
     });
+
 }
 
-async function inspectZipFile(zipFile){
-    const buffer=await zipFile.arrayBuffer();
-    const zip=await JSZip.loadAsync(buffer);
-    const entries=Object.values(zip.files)
-        .filter(entry=>!entry.dir)
-        .filter(entry=>isSupportedImportName(entry.name))
-        .filter(entry=>!/^(__MACOSX|\.DS_Store)(\/|$)/i.test(entry.name));
 
-    const items=[]; const hashToItem=new Map();
-    for(const entry of entries){
-        const bytes=await entry.async("uint8array");
-        const hash=await createHash(bytes.buffer);
-        const extension=getFileExtension(entry.name);
-        const pathName=entry.name.replace(/\/g,"/");
-        const name=pathName.split("/").pop();
-        const existing=models.find(model=>model.fileHash===hash);
-        const previous=hashToItem.get(hash);
-        const item={entry,bytes,hash,extension,name,path:pathName,size:bytes.byteLength,selected:!existing&&!previous,duplicateMessage:existing?`Bereits vorhanden: ${existing.name}`:previous?`Doppelt in dieser ZIP: ${previous.name}`:""};
-        items.push(item); if(!hashToItem.has(hash)) hashToItem.set(hash,item);
-    }
-    return items;
-}
+async function importZipFile(zipFile) {
 
-async function importZipFile(zipFile){
-    showToast(`ZIP wird untersucht: "${zipFile.name}"`,"info");
-    try{
-        const items=await inspectZipFile(zipFile);
-        if(!items.length){ showToast("In der ZIP wurden keine 3MF- oder STL-Dateien gefunden.","error"); return; }
-        const selected=await buildZipImportDialog(items,zipFile);
-        if(!selected.length) return;
-        let added=0;
-        for(const item of selected){
-            const file=new File([item.bytes],item.name,{type:getImportMimeType(item.extension)});
-            if(await uploadNewModel(file,{skipDuplicateCheck:true})) added++;
+    showToast(
+        `ZIP wird untersucht: "${zipFile.name}"`,
+        "info"
+    );
+
+    try {
+
+        const items =
+            await inspectZipFile(
+                zipFile
+            );
+
+        if (!items.length) {
+            showToast(
+                "In der ZIP wurden keine 3MF- oder STL-Dateien gefunden.",
+                "error"
+            );
+            return 0;
         }
-        await loadModels(); await attachModelRelations(); renderEverything();
-        showToast(`${added} Datei${added===1?"":"en"} aus "${zipFile.name}" importiert.`);
-    }catch(error){
-        console.error("ZIP-Import:",error);
-        showToast(`Die ZIP-Datei konnte nicht verarbeitet werden: ${error?.message||"Unbekannter Fehler"}`,"error");
+
+        const selected =
+            await showZipSelectionDialog(
+                items,
+                zipFile
+            );
+
+        if (!selected.length) {
+            return 0;
+        }
+
+        let added = 0;
+
+        for (const item of selected) {
+
+            const file =
+                new File(
+                    [item.bytes],
+                    item.name,
+                    {
+                        type:
+                            getImportMimeType(
+                                item.extension
+                            )
+                    }
+                );
+
+            if (
+                await uploadNewModel(
+                    file,
+                    { skipDuplicateCheck: true }
+                )
+            ) {
+                added++;
+            }
+
+        }
+
+        if (added > 0) {
+            await loadModels();
+            await attachModelRelations();
+            renderEverything();
+        }
+
+        showToast(
+            `${added} Datei${added === 1 ? "" : "en"} aus "${zipFile.name}" importiert.`
+        );
+
+        return added;
+
+    } catch (error) {
+
+        console.error(
+            "ZIP-Import:",
+            error
+        );
+
+        showToast(
+            `Die ZIP-Datei konnte nicht verarbeitet werden: ${error?.message || "Unbekannter Fehler"}`,
+            "error"
+        );
+
+        return 0;
+
     }
+
 }
 
 
@@ -2181,11 +2551,10 @@ async function attachModelRelations() {
    ========================================================= */
 
 function modelStoragePath(
-    modelId,
-    extension = ".3mf"
+    modelId
 ) {
 
-    return `${currentUser.id}/${modelId}${extension}`;
+    return `${currentUser.id}/${modelId}.3mf`;
 
 }
 
@@ -2208,20 +2577,25 @@ async function addFiles(
     files
 ) {
 
-    if (!files?.length) return;
+    if (!files?.length) {
+        return;
+    }
 
+    let added = 0;
     const importedHashes = new Set();
     const importedNames = new Map();
 
     for (const file of files) {
-        const extension = getFileExtension(file.name);
+
+        const extension =
+            getFileExtension(file.name);
 
         if (extension === ".zip") {
-            await importZipFile(file);
+            added += await importZipFile(file);
             continue;
         }
 
-        if (!SUPPORTED_EXTENSIONS.includes(extension)) {
+        if (!isSupportedModelFile(file.name)) {
             showToast(
                 `"${file.name}" wird nicht unterstützt. Bitte 3MF, STL oder ZIP verwenden.`,
                 "error"
@@ -2230,46 +2604,84 @@ async function addFiles(
         }
 
         try {
-            const buffer = await file.arrayBuffer();
-            const hash = await createHash(buffer);
-            const existing = models.find(model => model.fileHash === hash);
-            const alreadyInBatch = importedHashes.has(hash);
 
-            if (existing || alreadyInBatch) {
-                const message = existing
-                    ? `"${file.name}" ist bereits in deiner Library vorhanden.\n\nVorhandenes Modell: ${existing.name}\n\nTrotzdem hinzufügen?`
-                    : `"${file.name}" ist in diesem Import bereits enthalten.\n\nBereits ausgewählte Datei: ${importedNames.get(hash) || "gleicher Dateiinhalt"}\n\nTrotzdem hinzufügen?`;
+            const hash =
+                await createHash(
+                    await file.arrayBuffer()
+                );
 
-                const proceed = window.confirm(message);
+            const existing =
+                models.find(
+                    model => model.fileHash === hash
+                );
+
+            const sameBatch =
+                importedHashes.has(hash);
+
+            if (existing || sameBatch) {
+
+                const detail = existing
+                    ? `Bereits vorhanden: ${existing.name}`
+                    : `Doppelt in diesem Import: ${importedNames.get(hash) || "gleicher Dateiinhalt"}`;
+
+                const proceed =
+                    window.confirm(
+                        `"${file.name}" ist doppelt.\n\n${detail}\n\nTrotzdem hinzufügen?`
+                    );
+
                 if (!proceed) {
                     continue;
                 }
+
             }
 
-            showToast(`"${file.name}" wird hochgeladen...`, "info");
-            const success = await uploadNewModel(
-                file,
-                { skipDuplicateCheck: true }
+            showToast(
+                `"${file.name}" wird hochgeladen...`,
+                "info"
             );
 
+            const success =
+                await uploadNewModel(
+                    file,
+                    { skipDuplicateCheck: true }
+                );
+
             if (success) {
+                added++;
                 importedHashes.add(hash);
                 if (!importedNames.has(hash)) {
-                    importedNames.set(hash, file.name);
+                    importedNames.set(
+                        hash,
+                        file.name
+                    );
                 }
             }
+
         } catch (error) {
-            console.error("Datei-Import:", error);
+
+            console.error(
+                "Datei-Import:",
+                error
+            );
+
             showToast(
                 `"${file.name}" konnte nicht importiert werden.`,
                 "error"
             );
+
         }
+
     }
 
-    await loadModels();
-    await attachModelRelations();
-    renderEverything();
+    if (added > 0) {
+        await loadModels();
+        await attachModelRelations();
+        renderEverything();
+        showToast(
+            `${added} Datei${added === 1 ? "" : "en"} hinzugefügt.`
+        );
+    }
+
 }
 
 
@@ -2288,59 +2700,71 @@ async function uploadNewModel(
             currentUser = await ensureAuth();
         }
 
+        const extension =
+            getFileExtension(
+                file.name
+            );
+
+        if (!isSupportedModelFile(file.name)) {
+            throw new Error(
+                "Nur 3MF- und STL-Dateien werden unterstützt."
+            );
+        }
 
         const buffer =
             await file.arrayBuffer();
-
 
         const hash =
             await createHash(
                 buffer
             );
 
+        if (!options.skipDuplicateCheck) {
 
-        const duplicate =
-            models.find(
-                model =>
-                    model.fileHash ===
-                    hash
-            );
-
-
-        if (
-            duplicate &&
-            !options.skipDuplicateCheck
-        ) {
-
-            const proceed =
-                window.confirm(
-                    `"${file.name}" ist bereits vorhanden.\n\nModell: ${duplicate.name}\n\nTrotzdem hinzufügen?`
+            const duplicate =
+                models.find(
+                    model => model.fileHash === hash
                 );
 
-            if (!proceed) {
-                return false;
+            if (duplicate) {
+
+                const proceed =
+                    window.confirm(
+                        `"${file.name}" ist bereits vorhanden.\n\nModell: ${duplicate.name}\n\nTrotzdem hinzufügen?`
+                    );
+
+                if (!proceed) {
+                    return false;
+                }
+
             }
-        }
 
-        const extension = getFileExtension(file.name);
-
-        if (!SUPPORTED_EXTENSIONS.includes(extension)) {
-            throw new Error("Nur 3MF- und STL-Dateien werden unterstützt.");
         }
 
         let previewFile = null;
-        let metadata = { modelFiles: [], objectCount: 0 };
 
         if (extension === ".3mf") {
-            const zip = await JSZip.loadAsync(buffer);
-            previewFile = findPreview(zip);
-            metadata = await readMetadata(zip);
-        }
 
+            if (typeof JSZip === "undefined") {
+                throw new Error(
+                    "3MF-Unterstützung ist nicht geladen. Bitte die Seite einmal vollständig neu laden."
+                );
+            }
+
+            const zip =
+                await JSZip.loadAsync(
+                    buffer
+                );
+
+            previewFile =
+                findPreview(
+                    zip
+                );
+
+        }
 
         const modelId =
             createId();
-
 
         const modelPath =
             modelStoragePath(
@@ -2348,21 +2772,12 @@ async function uploadNewModel(
                 extension
             );
 
-
-        let previewPath =
-            null;
-
-
-        /*
-         * 3MF hochladen
-         */
+        let previewPath = null;
 
         const modelUpload =
             await supabase
                 .storage
-                .from(
-                    MODEL_BUCKET
-                )
+                .from(MODEL_BUCKET)
                 .upload(
                     modelPath,
                     file,
@@ -2377,163 +2792,91 @@ async function uploadNewModel(
                     }
                 );
 
-
-        if (
-            modelUpload.error
-        ) {
-
+        if (modelUpload.error) {
             throw modelUpload.error;
-
         }
 
+        if (previewFile) {
 
-        /*
-         * Preview hochladen
-         */
-
-        if (
-            previewFile
-        ) {
-
-            const extension =
+            const previewExtension =
                 getImageExtension(
                     previewFile.name
                 );
-
 
             const blob =
                 await previewFile.async(
                     "blob"
                 );
 
-
-            const imageBlob =
-                new Blob(
-                    [blob],
-                    {
-                        type:
-                            getImageMime(
-                                extension
-                            )
-                    }
-                );
-
-
             previewPath =
                 previewStoragePath(
                     modelId,
-                    extension
+                    previewExtension
                 );
-
 
             const previewUpload =
                 await supabase
                     .storage
-                    .from(
-                        PREVIEW_BUCKET
-                    )
+                    .from(PREVIEW_BUCKET)
                     .upload(
                         previewPath,
-                        imageBlob,
+                        blob,
                         {
                             upsert: false,
                             contentType:
                                 getImageMime(
-                                    extension
+                                    previewExtension
                                 ),
                             cacheControl:
                                 "86400"
                         }
                     );
 
-
-            if (
-                previewUpload.error
-            ) {
-
+            if (previewUpload.error) {
                 await cleanupStorageFiles(
                     modelPath,
                     null
                 );
-
                 throw previewUpload.error;
-
             }
 
         }
 
-
-        /*
-         * Datenbank
-         */
-
-        const {
-            error: insertError
-        } =
+        const { error: insertError } =
             await supabase
                 .from("models")
                 .insert({
-                    id:
-                        modelId,
-
-                    user_id:
-                        currentUser.id,
-
-                    name:
-                        getBaseName(
-                            file.name
-                        ),
-
-                    original_filename:
-                        file.name,
-
-                    file_path:
-                        modelPath,
-
-                    preview_path:
-                        previewPath,
-
-                    file_hash:
-                        hash,
-
-                    variable_size:
-                        false
-
+                    id: modelId,
+                    user_id: currentUser.id,
+                    name: getBaseName(file.name),
+                    original_filename: file.name,
+                    file_path: modelPath,
+                    preview_path: previewPath,
+                    file_hash: hash,
+                    variable_size: false
                 });
 
-
-        if (
-            insertError
-        ) {
-
+        if (insertError) {
             await cleanupStorageFiles(
                 modelPath,
                 previewPath
             );
-
             throw insertError;
-
         }
-
 
         return true;
 
-
-    } catch (
-        error
-    ) {
+    } catch (error) {
 
         console.error(
             "Modell-Upload:",
             error
         );
 
-
         showToast(
             `"${file.name}" konnte nicht gespeichert werden.`,
             "error"
         );
-
 
         return false;
 
@@ -2596,15 +2939,24 @@ async function replaceModelFile(
 
     try {
 
+        const extension =
+            getFileExtension(
+                file.name
+            );
+
+        if (!isSupportedModelFile(file.name)) {
+            throw new Error(
+                "Nur 3MF- und STL-Dateien werden unterstützt."
+            );
+        }
+
         const buffer =
             await file.arrayBuffer();
-
 
         const hash =
             await createHash(
                 buffer
             );
-
 
         const duplicate =
             models.find(
@@ -2613,7 +2965,6 @@ async function replaceModelFile(
                     item.id !== model.id
             );
 
-
         if (duplicate) {
 
             const proceed =
@@ -2621,26 +2972,11 @@ async function replaceModelFile(
                     `"${file.name}" entspricht bereits dem Modell "${duplicate.name}". Trotzdem ersetzen?`
                 );
 
-
             if (!proceed) {
                 return false;
             }
 
         }
-
-
-        const extension =
-            getFileExtension(
-                file.name
-            );
-
-
-        if (!SUPPORTED_EXTENSIONS.includes(extension)) {
-            throw new Error(
-                "Nur 3MF- und STL-Dateien werden unterstützt."
-            );
-        }
-
 
         let previewFile = null;
 
@@ -2649,46 +2985,25 @@ async function replaceModelFile(
                 await JSZip.loadAsync(
                     buffer
                 );
-
             previewFile =
                 findPreview(
                     zip
                 );
         }
 
-
-        const oldModelPath =
-            model.filePath;
-
-
-        const oldPreviewPath =
-            model.previewPath;
-
-
-        /*
-         * Erst unter einem neuen Pfad hochladen.
-         * So bleibt die alte Datei erhalten, falls
-         * ein späterer Datenbank-Schritt fehlschlägt.
-         */
-
-        const suffix =
-            Date.now();
-
+        const oldModelPath = model.filePath;
+        const oldPreviewPath = model.previewPath;
+        const suffix = Date.now();
 
         const nextModelPath =
             `${currentUser.id}/${model.id}-${suffix}${extension}`;
 
-
-        let nextPreviewPath =
-            null;
-
+        let nextPreviewPath = null;
 
         const modelUpload =
             await supabase
                 .storage
-                .from(
-                    MODEL_BUCKET
-                )
+                .from(MODEL_BUCKET)
                 .upload(
                     nextModelPath,
                     file,
@@ -2703,38 +3018,31 @@ async function replaceModelFile(
                     }
                 );
 
-
         if (modelUpload.error) {
             throw modelUpload.error;
         }
-
 
         try {
 
             if (previewFile) {
 
-                const extension =
+                const previewExtension =
                     getImageExtension(
                         previewFile.name
                     );
-
 
                 const blob =
                     await previewFile.async(
                         "blob"
                     );
 
-
                 nextPreviewPath =
-                    `${currentUser.id}/${model.id}-${suffix}.${extension}`;
-
+                    `${currentUser.id}/${model.id}-${suffix}.${previewExtension}`;
 
                 const previewUpload =
                     await supabase
                         .storage
-                        .from(
-                            PREVIEW_BUCKET
-                        )
+                        .from(PREVIEW_BUCKET)
                         .upload(
                             nextPreviewPath,
                             blob,
@@ -2742,13 +3050,12 @@ async function replaceModelFile(
                                 upsert: false,
                                 contentType:
                                     getImageMime(
-                                        extension
+                                        previewExtension
                                     ),
                                 cacheControl:
                                     "86400"
                             }
                         );
-
 
                 if (previewUpload.error) {
                     throw previewUpload.error;
@@ -2756,72 +3063,49 @@ async function replaceModelFile(
 
             }
 
-
             const { error } =
                 await supabase
                     .from("models")
                     .update({
-
-                        original_filename:
-                            file.name,
-
-                        file_path:
-                            nextModelPath,
-
-                        preview_path:
-                            nextPreviewPath,
-
-                        file_hash:
-                            hash,
-
-                        updated_at:
-                            new Date().toISOString()
-
+                        original_filename: file.name,
+                        file_path: nextModelPath,
+                        preview_path: nextPreviewPath,
+                        file_hash: hash,
+                        updated_at: new Date().toISOString()
                     })
                     .eq(
                         "id",
                         model.id
                     );
 
-
             if (error) {
                 throw error;
             }
-
 
         } catch (error) {
 
             await cleanupStorageFiles(
                 nextModelPath,
-                nextPreviewPath !== oldPreviewPath
-                    ? nextPreviewPath
-                    : null
+                nextPreviewPath
             );
-
 
             throw error;
 
         }
 
-
-        /*
-         * Erst nachdem der neue Datensatz erfolgreich
-         * in der DB steht, werden die alten Objekte gelöscht.
-         */
-
-        if (oldModelPath && oldModelPath !== nextModelPath) {
+        if (
+            oldModelPath &&
+            oldModelPath !== nextModelPath
+        ) {
 
             await supabase
                 .storage
-                .from(
-                    MODEL_BUCKET
-                )
+                .from(MODEL_BUCKET)
                 .remove([
                     oldModelPath
                 ]);
 
         }
-
 
         if (
             oldPreviewPath &&
@@ -2830,59 +3114,35 @@ async function replaceModelFile(
 
             await supabase
                 .storage
-                .from(
-                    PREVIEW_BUCKET
-                )
+                .from(PREVIEW_BUCKET)
                 .remove([
                     oldPreviewPath
                 ]);
 
         }
 
-
-        model.file =
-            file;
-
-        model.fileHash =
-            hash;
-
-        model.originalName =
-            file.name;
-
-        model.filePath =
-            nextModelPath;
-
-        model.previewPath =
-            nextPreviewPath;
+        model.file = file;
+        model.fileHash = hash;
+        model.originalName = file.name;
+        model.filePath = nextModelPath;
+        model.previewPath = nextPreviewPath;
 
         if (
             model.previewObjectURL &&
-            model.previewObjectURL.startsWith(
-                "blob:"
-            )
+            model.previewObjectURL.startsWith("blob:")
         ) {
-
             URL.revokeObjectURL(
                 model.previewObjectURL
             );
-
         }
 
-        model.previewObjectURL =
-            null;
-
-        model.previewURL =
-            null;
-
-        model.previewExpiresAt =
-            0;
-
+        model.previewObjectURL = null;
+        model.previewURL = null;
+        model.previewExpiresAt = 0;
 
         await loadPreviewUrls();
 
-
         return true;
-
 
     } catch (error) {
 
@@ -2891,12 +3151,10 @@ async function replaceModelFile(
             error
         );
 
-
         showToast(
-            `Die 3MF-Datei konnte nicht ersetzt werden: ${error?.message || "Unbekannter Fehler"}`,
+            `Die Datei konnte nicht ersetzt werden: ${error?.message || "Unbekannter Fehler"}`,
             "error"
         );
-
 
         return false;
 
@@ -3096,13 +3354,16 @@ function createModelCard(
         "model-card";
 
 
-    const modelExtension = getFileExtension(
-        model.originalName ||
-        model.filePath ||
-        ".3mf"
-    );
+    const modelExtension =
+        getFileExtension(
+            model.originalName ||
+            model.filePath ||
+            ".3mf"
+        );
 
-    const is3mf = modelExtension === ".3mf";
+    const is3mf =
+        modelExtension === ".3mf";
+
 
     const preview =
         model.previewURL
@@ -3342,12 +3603,13 @@ function createModelCard(
      * Druckplatten
      */
 
-    const plateButton = card.querySelector(
-        '[data-action="plates"]'
-    );
+    const platesButton =
+        card.querySelector(
+            '[data-action="plates"]'
+        );
 
-    if (plateButton) {
-        plateButton.addEventListener(
+    if (platesButton) {
+        platesButton.addEventListener(
             "click",
             () =>
                 openPlatePreviewModal(
@@ -3378,9 +3640,10 @@ function createModelCard(
      * Bambu Studio
      */
 
-    const bambuButton = card.querySelector(
-        '[data-action="bambu"]'
-    );
+    const bambuButton =
+        card.querySelector(
+            '[data-action="bambu"]'
+        );
 
     if (bambuButton) {
         bambuButton.addEventListener(
@@ -6678,15 +6941,34 @@ function openInBambuStudio(
             model.id
         )}`;
 
-    const frame = document.createElement("iframe");
-    frame.setAttribute("aria-hidden", "true");
-    frame.style.display = "none";
-    frame.src = protocolUrl;
-    document.body.appendChild(frame);
+    /*
+     * Das registrierte Windows-Protokoll direkt aus der bestehenden
+     * PWA heraus starten. Kein _blank, damit kein zusätzliches
+     * sichtbares Browserfenster bzw. Tab erzeugt wird.
+     */
+    const link =
+        document.createElement(
+            "a"
+        );
 
-    setTimeout(() => frame.remove(), 1500);
+    link.href =
+        protocolUrl;
+
+    link.style.display =
+        "none";
+
+    document.body.appendChild(
+        link
+    );
+
+    link.click();
+
+    setTimeout(
+        () => link.remove(),
+        750
+    );
+
 }
-
 
 
 /* =========================================================
@@ -6696,11 +6978,6 @@ function openInBambuStudio(
 async function openPlatePreviewModal(
     model
 ) {
-
-    if (getFileExtension(model.originalName || model.filePath || "") !== ".3mf") {
-        showToast("Druckplatten-Vorschauen gibt es nur für 3MF-Dateien.","info");
-        return;
-    }
 
     platePreviewModal.classList.remove(
         "hidden"
