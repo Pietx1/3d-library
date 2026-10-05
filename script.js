@@ -168,6 +168,11 @@ const editTagGrid =
 const replaceFileInput =
     document.getElementById("replaceFileInput");
 
+
+if (replaceFileInput) {
+    replaceFileInput.accept = ".3mf,.stl";
+}
+
 const saveEditModel =
     document.getElementById("saveEditModel");
 
@@ -348,6 +353,286 @@ const PREVIEW_BUCKET =
 
 const SIGNED_URL_SECONDS =
     24 * 60 * 60;
+
+
+/* =========================================================
+   IMPORT – 3MF / STL / ZIP
+   ========================================================= */
+
+const SUPPORTED_EXTENSIONS = [
+    ".3mf",
+    ".stl"
+];
+
+if (fileInput) {
+    fileInput.accept = ".3mf,.stl,.zip";
+}
+
+
+if (dropZone) {
+    const dropHeading = dropZone.querySelector(".drop-text strong");
+    const dropDescription = dropZone.querySelector(".drop-text span");
+    const dropButton = dropZone.querySelector("#dropUploadButton");
+
+    if (dropHeading) {
+        dropHeading.textContent =
+            "3MF-, STL- oder ZIP-Dateien hier hineinziehen";
+    }
+
+    if (dropDescription) {
+        dropDescription.textContent =
+            "ZIP-Dateien werden geöffnet und du wählst die gewünschten Dateien aus";
+    }
+
+    if (dropButton) {
+        dropButton.textContent = "Dateien auswählen";
+    }
+}
+
+(function addDesktopOnlyBambuStyle() {
+    if (document.getElementById("desktopOnlyBambuStyle")) {
+        return;
+    }
+
+    const style = document.createElement("style");
+    style.id = "desktopOnlyBambuStyle";
+    style.textContent = `
+        @media (max-width: 767px) {
+            .bambu-button {
+                display: none !important;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+})();
+
+function getFileExtension(name = "") {
+    const dot = name.lastIndexOf(".");
+    return dot === -1 ? "" : name.slice(dot).toLowerCase();
+}
+
+function getBaseName(name = "") {
+    return name
+        .replace(/\/g, "/")
+        .split("/")
+        .pop()
+        .replace(/\.[^.]+$/i, "");
+}
+
+function isSupportedImportName(name = "") {
+    return SUPPORTED_EXTENSIONS.includes(getFileExtension(name));
+}
+
+function getImportMimeType(extension) {
+    return extension === ".stl"
+        ? "model/stl"
+        : "application/vnd.ms-package.3dmanufacturing-3dmodel+xml";
+}
+
+function formatImportSize(bytes = 0) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function ensureZipImportStyles() {
+    if (document.getElementById("zipImportStyles")) return;
+
+    const style = document.createElement("style");
+    style.id = "zipImportStyles";
+    style.textContent = `
+        .zip-import-modal {
+            position: fixed; inset: 0; z-index: 1000;
+            display: flex; align-items: center; justify-content: center;
+            padding: 18px; background: rgba(15,15,18,.42);
+            backdrop-filter: blur(8px);
+        }
+        .zip-import-window {
+            width: min(760px,100%); max-height: min(760px,calc(100vh - 36px));
+            display: flex; flex-direction: column; overflow: hidden;
+            border: 1px solid var(--border); border-radius: 22px;
+            background: var(--surface); box-shadow: 0 30px 90px rgba(0,0,0,.22);
+        }
+        .zip-import-header { padding: 22px 24px 15px; border-bottom: 1px solid var(--border); }
+        .zip-import-header h2 { margin: 0 0 6px; font-size: 22px; letter-spacing: -.03em; }
+        .zip-import-header p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+        .zip-import-toolbar { display:flex; flex-wrap:wrap; gap:8px; padding:12px 24px; border-bottom:1px solid var(--border); background:var(--surface-2); }
+        .zip-import-tool { border:1px solid var(--border); border-radius:9px; background:white; padding:7px 10px; color:var(--text); font-size:11px; cursor:pointer; }
+        .zip-import-tool:hover { background:#f8f8f9; }
+        .zip-import-list { min-height:0; overflow:auto; padding:10px 14px; }
+        .zip-import-row { display:grid; grid-template-columns:22px minmax(0,1fr) auto; gap:10px; align-items:center; padding:11px 10px; border-radius:12px; }
+        .zip-import-row:hover { background:var(--surface-2); }
+        .zip-import-row.is-duplicate { background:#fff6f5; }
+        .zip-import-file { min-width:0; }
+        .zip-import-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text); font-size:13px; font-weight:650; }
+        .zip-import-path { margin-top:3px; overflow-wrap:anywhere; color:var(--muted-2); font-size:10px; line-height:1.4; }
+        .zip-import-status { max-width:240px; text-align:right; color:var(--muted); font-size:10px; line-height:1.35; }
+        .zip-import-status.duplicate { color:#b5473d; font-weight:650; }
+        .zip-import-footer { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 24px; border-top:1px solid var(--border); }
+        .zip-import-count { min-width:0; color:var(--muted); font-size:11px; line-height:1.4; }
+        .zip-import-actions { display:flex; gap:8px; flex-shrink:0; }
+        @media (max-width:700px) {
+            .zip-import-window { max-height:calc(100vh - 24px); border-radius:18px; }
+            .zip-import-header,.zip-import-footer,.zip-import-toolbar { padding-left:16px; padding-right:16px; }
+            .zip-import-row { grid-template-columns:22px minmax(0,1fr); }
+            .zip-import-status { grid-column:2; max-width:none; text-align:left; }
+            .zip-import-footer { align-items:stretch; flex-direction:column; }
+            .zip-import-actions { width:100%; }
+            .zip-import-actions>button { flex:1; }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+function buildZipImportDialog(items, zipFile) {
+    ensureZipImportStyles();
+
+    const overlay=document.createElement("div");
+    overlay.className="zip-import-modal";
+    overlay.setAttribute("role","dialog");
+    overlay.setAttribute("aria-modal","true");
+
+    const win=document.createElement("div");
+    win.className="zip-import-window";
+
+    const header=document.createElement("div");
+    header.className="zip-import-header";
+    header.innerHTML=`<h2>Dateien aus ZIP auswählen</h2><p>${escapeHTML(zipFile.name)} · ${items.length} unterstützte Datei${items.length===1?"":"en"} gefunden. Es werden nur 3MF- und STL-Dateien angezeigt.</p>`;
+
+    const toolbar=document.createElement("div");
+    toolbar.className="zip-import-toolbar";
+    const list=document.createElement("div");
+    list.className="zip-import-list";
+    const footer=document.createElement("div");
+    footer.className="zip-import-footer";
+    const count=document.createElement("div");
+    count.className="zip-import-count";
+    const actions=document.createElement("div");
+    actions.className="zip-import-actions";
+
+    const cancel=document.createElement("button");
+    cancel.type="button"; cancel.className="secondary-button"; cancel.textContent="Abbrechen";
+    const importButton=document.createElement("button");
+    importButton.type="button"; importButton.className="primary-button";
+
+    function updateCount(){
+        const selected=items.filter(item=>item.selected).length;
+        const duplicates=items.filter(item=>item.duplicateMessage).length;
+        count.textContent=`${selected} ausgewählt${duplicates?` · ${duplicates} doppelte Datei${duplicates===1?"":"en"}`:""}`;
+        importButton.textContent=selected?`${selected} Datei${selected===1?"":"en"} importieren`:"Importieren";
+        importButton.disabled=selected===0;
+    }
+
+    function setSelection(predicate){
+        items.forEach(item=>{
+            item.selected=predicate(item);
+            if(item.input) item.input.checked=item.selected;
+        });
+        updateCount();
+    }
+
+    const makeTool=(label,fn)=>{
+        const button=document.createElement("button");
+        button.type="button"; button.className="zip-import-tool"; button.textContent=label;
+        button.addEventListener("click",fn); return button;
+    };
+
+    toolbar.append(
+        makeTool("Alle",()=>setSelection(()=>true)),
+        makeTool("Alle 3MF",()=>setSelection(item=>item.extension===".3mf")),
+        makeTool("Alle STL",()=>setSelection(item=>item.extension===".stl")),
+        makeTool("Alle abwählen",()=>setSelection(()=>false))
+    );
+
+    items.forEach(item=>{
+        const row=document.createElement("label");
+        row.className=`zip-import-row${item.duplicateMessage?" is-duplicate":""}`;
+        const input=document.createElement("input");
+        input.type="checkbox"; input.checked=item.selected; item.input=input;
+        input.addEventListener("change",()=>{ item.selected=input.checked; updateCount(); });
+        const info=document.createElement("div"); info.className="zip-import-file";
+        info.innerHTML=`<div class="zip-import-name">${escapeHTML(item.name)}</div><div class="zip-import-path">${escapeHTML(item.path)} · ${formatImportSize(item.size)}</div>`;
+        const status=document.createElement("div");
+        status.className=`zip-import-status${item.duplicateMessage?" duplicate":""}`;
+        status.textContent=item.duplicateMessage || item.extension.toUpperCase().slice(1);
+        row.append(input,info,status); list.appendChild(row);
+    });
+
+    actions.append(cancel,importButton);
+    footer.append(count,actions);
+    win.append(header,toolbar,list,footer);
+    overlay.appendChild(win);
+    document.body.appendChild(overlay);
+    updateCount();
+
+    return new Promise(resolve=>{
+        let settled = false;
+
+        const finish = value => {
+            if (settled) return;
+            settled = true;
+            overlay.remove();
+            resolve(value);
+        };
+
+        cancel.addEventListener("click", () => finish([]));
+
+        overlay.addEventListener("click", event => {
+            if (event.target === overlay) {
+                finish([]);
+            }
+        });
+
+        importButton.addEventListener("click", () => {
+            const selected = items.filter(item => item.selected);
+            if (!selected.length) return;
+            finish(selected);
+        });
+    });
+}
+
+async function inspectZipFile(zipFile){
+    const buffer=await zipFile.arrayBuffer();
+    const zip=await JSZip.loadAsync(buffer);
+    const entries=Object.values(zip.files)
+        .filter(entry=>!entry.dir)
+        .filter(entry=>isSupportedImportName(entry.name))
+        .filter(entry=>!/^(__MACOSX|\.DS_Store)(\/|$)/i.test(entry.name));
+
+    const items=[]; const hashToItem=new Map();
+    for(const entry of entries){
+        const bytes=await entry.async("uint8array");
+        const hash=await createHash(bytes.buffer);
+        const extension=getFileExtension(entry.name);
+        const pathName=entry.name.replace(/\/g,"/");
+        const name=pathName.split("/").pop();
+        const existing=models.find(model=>model.fileHash===hash);
+        const previous=hashToItem.get(hash);
+        const item={entry,bytes,hash,extension,name,path:pathName,size:bytes.byteLength,selected:!existing&&!previous,duplicateMessage:existing?`Bereits vorhanden: ${existing.name}`:previous?`Doppelt in dieser ZIP: ${previous.name}`:""};
+        items.push(item); if(!hashToItem.has(hash)) hashToItem.set(hash,item);
+    }
+    return items;
+}
+
+async function importZipFile(zipFile){
+    showToast(`ZIP wird untersucht: "${zipFile.name}"`,"info");
+    try{
+        const items=await inspectZipFile(zipFile);
+        if(!items.length){ showToast("In der ZIP wurden keine 3MF- oder STL-Dateien gefunden.","error"); return; }
+        const selected=await buildZipImportDialog(items,zipFile);
+        if(!selected.length) return;
+        let added=0;
+        for(const item of selected){
+            const file=new File([item.bytes],item.name,{type:getImportMimeType(item.extension)});
+            if(await uploadNewModel(file,{skipDuplicateCheck:true})) added++;
+        }
+        await loadModels(); await attachModelRelations(); renderEverything();
+        showToast(`${added} Datei${added===1?"":"en"} aus "${zipFile.name}" importiert.`);
+    }catch(error){
+        console.error("ZIP-Import:",error);
+        showToast(`Die ZIP-Datei konnte nicht verarbeitet werden: ${error?.message||"Unbekannter Fehler"}`,"error");
+    }
+}
 
 
 /* =========================================================
@@ -1896,10 +2181,11 @@ async function attachModelRelations() {
    ========================================================= */
 
 function modelStoragePath(
-    modelId
+    modelId,
+    extension = ".3mf"
 ) {
 
-    return `${currentUser.id}/${modelId}.3mf`;
+    return `${currentUser.id}/${modelId}${extension}`;
 
 }
 
@@ -1922,82 +2208,68 @@ async function addFiles(
     files
 ) {
 
-    const validFiles =
-        files.filter(
-            file =>
-                file.name
-                    .toLowerCase()
-                    .endsWith(
-                        ".3mf"
-                    )
-        );
+    if (!files?.length) return;
 
+    const importedHashes = new Set();
+    const importedNames = new Map();
 
-    if (
-        validFiles.length === 0
-    ) {
+    for (const file of files) {
+        const extension = getFileExtension(file.name);
 
-        showToast(
-            "Keine gültige 3MF-Datei gefunden.",
-            "error"
-        );
-
-        return;
-
-    }
-
-
-    let added =
-        0;
-
-
-    for (
-        const file of validFiles
-    ) {
-
-        showToast(
-            `"${file.name}" wird hochgeladen...`,
-            "info"
-        );
-
-
-        const success =
-            await uploadNewModel(
-                file
-            );
-
-
-        if (
-            success
-        ) {
-
-            added++;
-
+        if (extension === ".zip") {
+            await importZipFile(file);
+            continue;
         }
 
+        if (!SUPPORTED_EXTENSIONS.includes(extension)) {
+            showToast(
+                `"${file.name}" wird nicht unterstützt. Bitte 3MF, STL oder ZIP verwenden.`,
+                "error"
+            );
+            continue;
+        }
+
+        try {
+            const buffer = await file.arrayBuffer();
+            const hash = await createHash(buffer);
+            const existing = models.find(model => model.fileHash === hash);
+            const alreadyInBatch = importedHashes.has(hash);
+
+            if (existing || alreadyInBatch) {
+                const message = existing
+                    ? `"${file.name}" ist bereits in deiner Library vorhanden.\n\nVorhandenes Modell: ${existing.name}\n\nTrotzdem hinzufügen?`
+                    : `"${file.name}" ist in diesem Import bereits enthalten.\n\nBereits ausgewählte Datei: ${importedNames.get(hash) || "gleicher Dateiinhalt"}\n\nTrotzdem hinzufügen?`;
+
+                const proceed = window.confirm(message);
+                if (!proceed) {
+                    continue;
+                }
+            }
+
+            showToast(`"${file.name}" wird hochgeladen...`, "info");
+            const success = await uploadNewModel(
+                file,
+                { skipDuplicateCheck: true }
+            );
+
+            if (success) {
+                importedHashes.add(hash);
+                if (!importedNames.has(hash)) {
+                    importedNames.set(hash, file.name);
+                }
+            }
+        } catch (error) {
+            console.error("Datei-Import:", error);
+            showToast(
+                `"${file.name}" konnte nicht importiert werden.`,
+                "error"
+            );
+        }
     }
 
-
-    if (
-        added > 0
-    ) {
-
-        await loadModels();
-
-        await attachModelRelations();
-
-        renderEverything();
-
-        showToast(
-            `${added} Modell${
-                added === 1
-                    ? ""
-                    : "e"
-            } hinzugefügt.`
-        );
-
-    }
-
+    await loadModels();
+    await attachModelRelations();
+    renderEverything();
 }
 
 
@@ -2006,7 +2278,8 @@ async function addFiles(
    ========================================================= */
 
 async function uploadNewModel(
-    file
+    file,
+    options = {}
 ) {
 
     try {
@@ -2035,7 +2308,8 @@ async function uploadNewModel(
 
 
         if (
-            duplicate
+            duplicate &&
+            !options.skipDuplicateCheck
         ) {
 
             const proceed =
@@ -2043,34 +2317,25 @@ async function uploadNewModel(
                     `"${file.name}" ist bereits vorhanden.\n\nModell: ${duplicate.name}\n\nTrotzdem hinzufügen?`
                 );
 
-
-            if (
-                !proceed
-            ) {
-
+            if (!proceed) {
                 return false;
-
             }
-
         }
 
+        const extension = getFileExtension(file.name);
 
-        const zip =
-            await JSZip.loadAsync(
-                buffer
-            );
+        if (!SUPPORTED_EXTENSIONS.includes(extension)) {
+            throw new Error("Nur 3MF- und STL-Dateien werden unterstützt.");
+        }
 
+        let previewFile = null;
+        let metadata = { modelFiles: [], objectCount: 0 };
 
-        const previewFile =
-            findPreview(
-                zip
-            );
-
-
-        const metadata =
-            await readMetadata(
-                zip
-            );
+        if (extension === ".3mf") {
+            const zip = await JSZip.loadAsync(buffer);
+            previewFile = findPreview(zip);
+            metadata = await readMetadata(zip);
+        }
 
 
         const modelId =
@@ -2079,7 +2344,8 @@ async function uploadNewModel(
 
         const modelPath =
             modelStoragePath(
-                modelId
+                modelId,
+                extension
             );
 
 
@@ -2103,7 +2369,9 @@ async function uploadNewModel(
                     {
                         upsert: false,
                         contentType:
-                            "application/vnd.ms-package.3dmanufacturing-3dmodel+xml",
+                            getImportMimeType(
+                                extension
+                            ),
                         cacheControl:
                             "3600"
                     }
@@ -2212,9 +2480,8 @@ async function uploadNewModel(
                         currentUser.id,
 
                     name:
-                        file.name.replace(
-                            /\.3mf$/i,
-                            ""
+                        getBaseName(
+                            file.name
                         ),
 
                     original_filename:
@@ -2362,16 +2629,32 @@ async function replaceModelFile(
         }
 
 
-        const zip =
-            await JSZip.loadAsync(
-                buffer
+        const extension =
+            getFileExtension(
+                file.name
             );
 
 
-        const previewFile =
-            findPreview(
-                zip
+        if (!SUPPORTED_EXTENSIONS.includes(extension)) {
+            throw new Error(
+                "Nur 3MF- und STL-Dateien werden unterstützt."
             );
+        }
+
+
+        let previewFile = null;
+
+        if (extension === ".3mf") {
+            const zip =
+                await JSZip.loadAsync(
+                    buffer
+                );
+
+            previewFile =
+                findPreview(
+                    zip
+                );
+        }
 
 
         const oldModelPath =
@@ -2393,11 +2676,11 @@ async function replaceModelFile(
 
 
         const nextModelPath =
-            `${currentUser.id}/${model.id}-${suffix}.3mf`;
+            `${currentUser.id}/${model.id}-${suffix}${extension}`;
 
 
         let nextPreviewPath =
-            oldPreviewPath;
+            null;
 
 
         const modelUpload =
@@ -2412,7 +2695,9 @@ async function replaceModelFile(
                     {
                         upsert: false,
                         contentType:
-                            "application/vnd.ms-package.3dmanufacturing-3dmodel+xml",
+                            getImportMimeType(
+                                extension
+                            ),
                         cacheControl:
                             "3600"
                     }
@@ -2811,6 +3096,14 @@ function createModelCard(
         "model-card";
 
 
+    const modelExtension = getFileExtension(
+        model.originalName ||
+        model.filePath ||
+        ".3mf"
+    );
+
+    const is3mf = modelExtension === ".3mf";
+
     const preview =
         model.previewURL
 
@@ -2825,7 +3118,7 @@ function createModelCard(
 
             : `
                 <div class="preview-placeholder">
-                    <strong>3MF</strong>
+                    <strong>${is3mf ? "3MF" : "STL"}</strong>
                     <br>
                     Keine Vorschau
                 </div>
@@ -2906,14 +3199,16 @@ function createModelCard(
 
         <div
             class="model-preview"
-            data-action="plates"
+            ${is3mf ? 'data-action="plates"' : ''}
         >
 
             ${preview}
 
-            <div class="model-open-hint">
-                Alle Druckplatten öffnen
-            </div>
+            ${is3mf ? `
+                <div class="model-open-hint">
+                    Alle Druckplatten öffnen
+                </div>
+            ` : ""}
 
         </div>
 
@@ -3006,13 +3301,15 @@ function createModelCard(
                 </button>
 
 
-                <button
-                    class="card-button bambu-button"
-                    type="button"
-                    data-action="bambu"
-                >
-                    Bambu Studio öffnen
-                </button>
+                ${is3mf ? `
+                    <button
+                        class="card-button bambu-button"
+                        type="button"
+                        data-action="bambu"
+                    >
+                        Bambu Studio öffnen
+                    </button>
+                ` : ""}
 
 
                 <button
@@ -3045,17 +3342,19 @@ function createModelCard(
      * Druckplatten
      */
 
-    card
-        .querySelector(
-            '[data-action="plates"]'
-        )
-        .addEventListener(
+    const plateButton = card.querySelector(
+        '[data-action="plates"]'
+    );
+
+    if (plateButton) {
+        plateButton.addEventListener(
             "click",
             () =>
                 openPlatePreviewModal(
                     model
                 )
         );
+    }
 
 
     /*
@@ -3079,17 +3378,19 @@ function createModelCard(
      * Bambu Studio
      */
 
-    card
-        .querySelector(
-            '[data-action="bambu"]'
-        )
-        .addEventListener(
+    const bambuButton = card.querySelector(
+        '[data-action="bambu"]'
+    );
+
+    if (bambuButton) {
+        bambuButton.addEventListener(
             "click",
             () =>
                 openInBambuStudio(
                     model
                 )
         );
+    }
 
 
     /*
@@ -6377,47 +6678,15 @@ function openInBambuStudio(
             model.id
         )}`;
 
-    /*
-     * Nicht mit location.assign() navigieren: Chrome kann ein
-     * unbekanntes Custom-Schema dabei als relativen Pfad behandeln.
-     * Ein echter Link mit href-Attribut löst den registrierten
-     * Windows-Protocol-Handler aus.
-     */
-    const link =
-        document.createElement(
-            "a"
-        );
+    const frame = document.createElement("iframe");
+    frame.setAttribute("aria-hidden", "true");
+    frame.style.display = "none";
+    frame.src = protocolUrl;
+    document.body.appendChild(frame);
 
-    link.setAttribute(
-        "href",
-        protocolUrl
-    );
-
-    link.setAttribute(
-        "target",
-        "_blank"
-    );
-
-    link.setAttribute(
-        "rel",
-        "noreferrer"
-    );
-
-    link.style.display =
-        "none";
-
-    document.body.appendChild(
-        link
-    );
-
-    link.click();
-
-    setTimeout(
-        () => link.remove(),
-        1000
-    );
-
+    setTimeout(() => frame.remove(), 1500);
 }
+
 
 
 /* =========================================================
@@ -6427,6 +6696,11 @@ function openInBambuStudio(
 async function openPlatePreviewModal(
     model
 ) {
+
+    if (getFileExtension(model.originalName || model.filePath || "") !== ".3mf") {
+        showToast("Druckplatten-Vorschauen gibt es nur für 3MF-Dateien.","info");
+        return;
+    }
 
     platePreviewModal.classList.remove(
         "hidden"
