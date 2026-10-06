@@ -5955,6 +5955,8 @@ async function saveQueueEntry() {
 
                             size,
 
+                            notes,
+
                             position:
                                 nextPosition
 
@@ -8507,9 +8509,17 @@ function updateMultiSelectUI() {
         toggle.querySelector(
             ".v42-action-label"
         ).textContent =
+            toggle.setAttribute(
+                "aria-pressed",
+                multiSelectMode ? "true" : "false"
+            );
+
+        toggle.querySelector(
+            ".v42-action-label"
+        ).textContent =
             multiSelectMode
                 ? "Auswahl beenden"
-                : "Mehrere auswählen";
+                : "Mehrere bearbeiten";
 
     }
 
@@ -8724,9 +8734,11 @@ function setupMultiSelectControls() {
         button.type = "button";
         button.id = "multiSelectButton";
         button.className = "v42-action-button";
+        button.title = "Mehrere Modelle auswählen und gemeinsam Tags ändern";
+        button.setAttribute("aria-pressed", "false");
         button.innerHTML = `
             <span class="v42-action-icon">☷</span>
-            <span class="v42-action-label">Mehrere auswählen</span>
+            <span class="v42-action-label">Mehrere bearbeiten</span>
         `;
 
         button.addEventListener(
