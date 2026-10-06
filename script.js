@@ -339,6 +339,16 @@ let queueEntryForEdit = null;
 
 let unitIsCentimeters = true;
 
+let multiSelectMode = false;
+const selectedModelIds = new Set();
+let v42UiReady = false;
+
+const LAST_OPENED_STORAGE_KEY =
+    "3d-library-last-opened-v1";
+
+const THEME_STORAGE_KEY =
+    "3d-library-theme-v1";
+
 
 /* =========================================================
    CLOUD HELPERS
@@ -655,7 +665,7 @@ async function inspectZipFile(zipFile) {
             path,
             size: bytes.byteLength,
             selected:
-                !existing && !previous,
+                false,
             duplicateMessage:
                 existing
                     ? `Bereits vorhanden: ${existing.name}`
@@ -3237,6 +3247,17 @@ function getVisibleModels() {
             break;
 
 
+        case "lastOpened":
+
+            sorted.sort(
+                (a, b) =>
+                    getLastOpenedTime(b.id) -
+                    getLastOpenedTime(a.id)
+            );
+
+            break;
+
+
         default:
 
             sorted.sort(
@@ -3353,6 +3374,9 @@ function createModelCard(
     card.className =
         "model-card";
 
+    card.dataset.modelId =
+        String(model.id);
+
 
     const modelExtension =
         getFileExtension(
@@ -3459,6 +3483,23 @@ function createModelCard(
     card.innerHTML = `
 
         <div
+            class="model-selection-control"
+            title="Modell für Mehrfachauswahl markieren"
+        >
+
+            <input
+                class="model-selection-input"
+                type="checkbox"
+                aria-label="${escapeAttribute(
+                    model.name
+                )} auswählen"
+                ${selectedModelIds.has(model.id) ? "checked" : ""}
+            >
+
+        </div>
+
+
+        <div
             class="model-preview"
             ${is3mf ? 'data-action="plates"' : ''}
         >
@@ -3525,6 +3566,9 @@ function createModelCard(
                     model.originalName
                 )}
             </div>
+
+
+            ${getModelChangeInfoHTML(model)}
 
 
             <details class="tag-picker">
@@ -3597,6 +3641,42 @@ function createModelCard(
         </div>
 
     `;
+
+
+    /*
+     * Mehrfachauswahl
+     */
+
+    const selectionInput =
+        card.querySelector(
+            ".model-selection-input"
+        );
+
+    if (selectionInput) {
+
+        selectionInput.addEventListener(
+            "click",
+            event =>
+                event.stopPropagation()
+        );
+
+
+        selectionInput.addEventListener(
+            "change",
+            () => {
+
+                if (selectionInput.checked) {
+                    selectedModelIds.add(model.id);
+                } else {
+                    selectedModelIds.delete(model.id);
+                }
+
+                updateMultiSelectUI();
+
+            }
+        );
+
+    }
 
 
     /*
@@ -4101,6 +4181,9 @@ function renderTagFilters() {
     tagFilterList.appendChild(
         noneButton
     );
+
+
+    populateBulkActionSelect();
 
 
     tags.forEach(
@@ -6936,6 +7019,9 @@ function openInBambuStudio(
     model
 ) {
 
+    rememberModelOpened(model.id);
+    renderModels();
+
     const protocolUrl =
         `library3d://open?model=${encodeURIComponent(
             model.id
@@ -8155,6 +8241,973 @@ supabase.auth.onAuthStateChange(
 
 
 /* =========================================================
+   V4.2 – THEME / LAST OPENED / MULTISELECT / BACKUP
+   ========================================================= */
+
+function readLastOpenedMap() {
+
+    try {
+
+        const raw =
+            localStorage.getItem(
+                LAST_OPENED_STORAGE_KEY
+            );
+
+        const parsed =
+            raw
+                ? JSON.parse(raw)
+                : {};
+
+        return parsed && typeof parsed === "object"
+            ? parsed
+            : {};
+
+    } catch {
+
+        return {};
+
+    }
+
+}
+
+
+function getLastOpenedTime(modelId) {
+
+    const map =
+        readLastOpenedMap();
+
+    const value =
+        Number(
+            new Date(
+                map[String(modelId)] || 0
+            ).getTime()
+        );
+
+    return Number.isFinite(value)
+        ? value
+        : 0;
+
+}
+
+
+function rememberModelOpened(modelId) {
+
+    try {
+
+        const map =
+            readLastOpenedMap();
+
+        map[String(modelId)] =
+            new Date().toISOString();
+
+        /* Nur die letzten 250 Einträge behalten. */
+        const trimmed =
+            Object.entries(map)
+                .sort(
+                    (a, b) =>
+                        new Date(b[1]).getTime() -
+                        new Date(a[1]).getTime()
+                )
+                .slice(0, 250);
+
+        localStorage.setItem(
+            LAST_OPENED_STORAGE_KEY,
+            JSON.stringify(
+                Object.fromEntries(trimmed)
+            )
+        );
+
+    } catch (error) {
+
+        console.warn(
+            "Zuletzt geöffnet konnte nicht gespeichert werden:",
+            error
+        );
+
+    }
+
+}
+
+
+function formatRelativeTime(timestamp) {
+
+    const time =
+        new Date(timestamp).getTime();
+
+    if (!Number.isFinite(time)) {
+        return "";
+    }
+
+    const diff =
+        Math.max(
+            0,
+            Date.now() - time
+        );
+
+    const minutes =
+        Math.round(diff / 60000);
+
+    if (minutes < 1) return "gerade eben";
+    if (minutes < 60) return `vor ${minutes} Min.`;
+
+    const hours =
+        Math.round(minutes / 60);
+
+    if (hours < 24) return `vor ${hours} Std.`;
+
+    const days =
+        Math.round(hours / 24);
+
+    if (days < 7) return `vor ${days} Tag${days === 1 ? "" : "en"}`;
+
+    return new Date(timestamp).toLocaleDateString(
+        "de-DE",
+        {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric"
+        }
+    );
+
+}
+
+
+function getModelChangeInfoHTML(model) {
+
+    const created =
+        new Date(model.createdAt).getTime();
+
+    const updated =
+        new Date(model.updatedAt).getTime();
+
+    if (
+        !Number.isFinite(created) ||
+        !Number.isFinite(updated) ||
+        updated - created < 60000
+    ) {
+        return "";
+    }
+
+    return `
+        <div
+            class="model-change-info"
+            title="Zuletzt von der Cloud aktualisiert"
+        >
+            <span class="model-change-dot"></span>
+            Geändert ${escapeHTML(
+                formatRelativeTime(model.updatedAt)
+            )}
+        </div>
+    `;
+
+}
+
+
+function applyTheme(theme) {
+
+    const dark =
+        theme === "dark";
+
+    document.body.classList.toggle(
+        "dark-mode",
+        dark
+    );
+
+    document.documentElement.dataset.theme =
+        dark
+            ? "dark"
+            : "light";
+
+    const meta =
+        document.querySelector(
+            'meta[name="theme-color"]'
+        );
+
+    if (meta) {
+        meta.setAttribute(
+            "content",
+            dark
+                ? "#111214"
+                : "#f5f5f7"
+        );
+    }
+
+    const button =
+        document.getElementById(
+            "themeToggleButton"
+        );
+
+    if (button) {
+
+        button.querySelector(
+            ".v42-action-label"
+        ).textContent =
+            dark
+                ? "Heller Modus"
+                : "Dunkler Modus";
+
+        button.querySelector(
+            ".v42-action-icon"
+        ).textContent =
+            dark
+                ? "☀"
+                : "☾";
+
+        button.setAttribute(
+            "aria-label",
+            dark
+                ? "Hellen Modus einschalten"
+                : "Dunklen Modus einschalten"
+        );
+
+    }
+
+}
+
+
+function toggleTheme() {
+
+    const dark =
+        !document.body.classList.contains(
+            "dark-mode"
+        );
+
+    try {
+        localStorage.setItem(
+            THEME_STORAGE_KEY,
+            dark
+                ? "dark"
+                : "light"
+        );
+    } catch {}
+
+    applyTheme(
+        dark
+            ? "dark"
+            : "light"
+    );
+
+}
+
+
+function updateMultiSelectUI() {
+
+    document.body.classList.toggle(
+        "multi-select-mode",
+        multiSelectMode
+    );
+
+    const toggle =
+        document.getElementById(
+            "multiSelectButton"
+        );
+
+    if (toggle) {
+
+        toggle.querySelector(
+            ".v42-action-label"
+        ).textContent =
+            multiSelectMode
+                ? "Auswahl beenden"
+                : "Mehrere auswählen";
+
+    }
+
+    document.querySelectorAll(
+        ".model-card"
+    ).forEach(
+        card => {
+
+            const id =
+                card.dataset.modelId;
+
+            card.classList.toggle(
+                "is-selected",
+                Boolean(
+                    id &&
+                    selectedModelIds.has(id)
+                )
+            );
+
+        }
+    );
+
+    const bar =
+        document.getElementById(
+            "bulkSelectionBar"
+        );
+
+    if (!bar) return;
+
+    const count =
+        selectedModelIds.size;
+
+    bar.classList.toggle(
+        "hidden",
+        !multiSelectMode
+    );
+
+    bar.querySelector(
+        ".bulk-selection-count"
+    ).textContent =
+        `${count} ausgewählt`;
+
+    const applyButton =
+        bar.querySelector(
+            ".bulk-apply-button"
+        );
+
+    const action =
+        bar.querySelector(
+            ".bulk-action-select"
+        );
+
+    applyButton.disabled =
+        count === 0 || !action?.value;
+
+}
+
+
+function clearMultiSelection() {
+
+    selectedModelIds.clear();
+    multiSelectMode = false;
+    updateMultiSelectUI();
+
+}
+
+
+async function applyBulkTagAction() {
+
+    if (
+        selectedModelIds.size === 0
+    ) {
+        return;
+    }
+
+    const select =
+        document.getElementById(
+            "bulkActionSelect"
+        );
+
+    const action =
+        select?.value || "";
+
+    const match =
+        /^(add|remove):(.+)$/.exec(action);
+
+    if (!match) {
+        return;
+    }
+
+    const operation =
+        match[1];
+
+    const tagId =
+        match[2];
+
+    const selectedModels =
+        models.filter(
+            model =>
+                selectedModelIds.has(
+                    String(model.id)
+                )
+        );
+
+    if (selectedModels.length === 0) {
+        return;
+    }
+
+    const tag =
+        findTagById(tagId);
+
+    if (!tag) {
+        return;
+    }
+
+    const verb =
+        operation === "add"
+            ? `Tag „${tag.name}“ zu ${selectedModels.length} Modellen hinzufügen?`
+            : `Tag „${tag.name}“ bei ${selectedModels.length} Modellen entfernen?`;
+
+    if (!window.confirm(verb)) {
+        return;
+    }
+
+    const oldStates =
+        selectedModels.map(
+            model => ({
+                model,
+                tagIds: [...model.tagIds],
+                tags: [...model.tags]
+            })
+        );
+
+    try {
+
+        for (const model of selectedModels) {
+
+            const nextIds =
+                operation === "add"
+                    ? Array.from(
+                        new Set(
+                            [...model.tagIds, tag.id]
+                        )
+                    )
+                    : model.tagIds.filter(
+                        id => id !== tag.id
+                    );
+
+            model.tagIds = nextIds;
+            model.tags = nextIds
+                .map(id => findTagById(id)?.name || null)
+                .filter(Boolean);
+
+            await saveModelTags(model);
+
+        }
+
+        const actionText =
+            operation === "add"
+                ? `Tag „${tag.name}“ hinzugefügt.`
+                : `Tag „${tag.name}“ entfernt.`;
+
+        showToast(actionText);
+        clearMultiSelection();
+        renderEverything();
+
+    } catch (error) {
+
+        oldStates.forEach(
+            state => {
+                state.model.tagIds = state.tagIds;
+                state.model.tags = state.tags;
+            }
+        );
+
+        console.error(
+            "Mehrfach-Tag-Aktion:",
+            error
+        );
+
+        showToast(
+            "Die Änderung konnte nicht für alle ausgewählten Modelle gespeichert werden.",
+            "error"
+        );
+
+        renderEverything();
+
+    }
+
+}
+
+
+function setupMultiSelectControls() {
+
+    const filterRight =
+        document.querySelector(
+            ".filter-right"
+        );
+
+    const grid =
+        document.getElementById(
+            "modelGrid"
+        );
+
+    if (!filterRight || !grid) return;
+
+    if (!document.getElementById("multiSelectButton")) {
+
+        const button =
+            document.createElement("button");
+
+        button.type = "button";
+        button.id = "multiSelectButton";
+        button.className = "v42-action-button";
+        button.innerHTML = `
+            <span class="v42-action-icon">☷</span>
+            <span class="v42-action-label">Mehrere auswählen</span>
+        `;
+
+        button.addEventListener(
+            "click",
+            () => {
+
+                multiSelectMode =
+                    !multiSelectMode;
+
+                if (!multiSelectMode) {
+                    selectedModelIds.clear();
+                }
+
+                updateMultiSelectUI();
+
+            }
+        );
+
+        filterRight.insertBefore(
+            button,
+            modelCount
+        );
+
+    }
+
+    if (!document.getElementById("bulkSelectionBar")) {
+
+        const bar =
+            document.createElement("div");
+
+        bar.id = "bulkSelectionBar";
+        bar.className = "bulk-selection-bar hidden";
+        bar.innerHTML = `
+            <div class="bulk-selection-left">
+                <strong class="bulk-selection-count">0 ausgewählt</strong>
+                <span>Nur bewusst markierte Modelle werden geändert.</span>
+            </div>
+
+            <select
+                id="bulkActionSelect"
+                class="bulk-action-select"
+            >
+                <option value="">Tag-Aktion auswählen…</option>
+            </select>
+
+            <button
+                type="button"
+                class="primary-button bulk-apply-button"
+            >
+                Anwenden
+            </button>
+
+            <button
+                type="button"
+                class="secondary-button bulk-cancel-button"
+            >
+                Abbrechen
+            </button>
+        `;
+
+        const actionSelect =
+            bar.querySelector(
+                "#bulkActionSelect"
+            );
+
+        const applyButton =
+            bar.querySelector(
+                ".bulk-apply-button"
+            );
+
+        const cancelButton =
+            bar.querySelector(
+                ".bulk-cancel-button"
+            );
+
+        applyButton.addEventListener(
+            "click",
+            applyBulkTagAction
+        );
+
+        cancelButton.addEventListener(
+            "click",
+            clearMultiSelection
+        );
+
+        grid.parentNode.insertBefore(
+            bar,
+            grid
+        );
+
+    }
+
+    populateBulkActionSelect();
+    updateMultiSelectUI();
+
+}
+
+
+function populateBulkActionSelect() {
+
+    const select =
+        document.getElementById(
+            "bulkActionSelect"
+        );
+
+    if (!select) return;
+
+    const current =
+        select.value;
+
+    select.innerHTML =
+        `<option value="">Tag-Aktion auswählen…</option>`;
+
+    tags.forEach(
+        tag => {
+
+            const add =
+                document.createElement("option");
+
+            add.value =
+                `add:${tag.id}`;
+
+            add.textContent =
+                `Tag hinzufügen: ${tag.name}`;
+
+            select.appendChild(add);
+
+        }
+    );
+
+    tags.forEach(
+        tag => {
+
+            const remove =
+                document.createElement("option");
+
+            remove.value =
+                `remove:${tag.id}`;
+
+            remove.textContent =
+                `Tag entfernen: ${tag.name}`;
+
+            select.appendChild(remove);
+
+        }
+    );
+
+    if (
+        current &&
+        [...select.options].some(
+            option => option.value === current
+        )
+    ) {
+        select.value = current;
+    }
+
+}
+
+
+function setupThemeAndBackupControls() {
+
+    const bottom =
+        document.querySelector(
+            ".sidebar-bottom"
+        );
+
+    if (!bottom) return;
+
+    if (!document.getElementById("themeToggleButton")) {
+
+        const themeButton =
+            document.createElement("button");
+
+        themeButton.type = "button";
+        themeButton.id = "themeToggleButton";
+        themeButton.className = "companion-sidebar-button v42-sidebar-action";
+        themeButton.innerHTML = `
+            <span class="v42-action-icon">☾</span>
+            <span class="v42-action-label">Dunkler Modus</span>
+        `;
+
+        themeButton.addEventListener(
+            "click",
+            toggleTheme
+        );
+
+        const companion =
+            document.getElementById("companionButton");
+
+        bottom.insertBefore(
+            themeButton,
+            companion || bottom.firstChild
+        );
+
+    }
+
+    if (!document.getElementById("backupButton")) {
+
+        const backupButton =
+            document.createElement("button");
+
+        backupButton.type = "button";
+        backupButton.id = "backupButton";
+        backupButton.className = "companion-sidebar-button v42-sidebar-action";
+        backupButton.innerHTML = `
+            <span class="v42-action-icon">↓</span>
+            <span class="v42-action-label">Library sichern</span>
+        `;
+
+        backupButton.addEventListener(
+            "click",
+            createLibraryBackup
+        );
+
+        bottom.insertBefore(
+            backupButton,
+            document.getElementById("themeToggleButton")
+        );
+
+    }
+
+}
+
+
+async function createLibraryBackup() {
+
+    if (!currentUser) {
+        showToast(
+            "Bitte zuerst anmelden.",
+            "error"
+        );
+        return;
+    }
+
+    if (!window.JSZip) {
+        showToast(
+            "Backup-Unterstützung ist nicht geladen. Bitte App neu laden.",
+            "error"
+        );
+        return;
+    }
+
+    const button =
+        document.getElementById("backupButton");
+
+    if (button?.disabled) return;
+
+    const confirmed =
+        window.confirm(
+            `Eine vollständige Sicherung mit ${models.length} Modellen, Tags und Druckwarteschlange erstellen? Große Libraries können einige Zeit und Arbeitsspeicher benötigen.`
+        );
+
+    if (!confirmed) return;
+
+    try {
+
+        button.disabled = true;
+        button.querySelector(".v42-action-label").textContent = "Backup wird erstellt…";
+
+        const zip =
+            new JSZip();
+
+        const metadata = {
+            version: "3D Library Backup V1",
+            created_at: new Date().toISOString(),
+            user_id: currentUser.id,
+            models: models.map(
+                model => ({
+                    id: model.id,
+                    name: model.name,
+                    original_filename: model.originalName,
+                    file_hash: model.fileHash,
+                    variable_size: model.variableSize,
+                    created_at: model.createdAt,
+                    updated_at: model.updatedAt,
+                    tag_ids: [...model.tagIds],
+                    last_opened_at: readLastOpenedMap()[String(model.id)] || null
+                })
+            ),
+            tags: tags.map(
+                tag => ({
+                    id: tag.id,
+                    name: tag.name,
+                    color: tag.color || null
+                })
+            ),
+            print_queue: printQueue.map(
+                entry => ({
+                    id: entry.id,
+                    model_id: entry.modelId,
+                    quantity: entry.quantity,
+                    position: entry.position,
+                    notes: entry.notes || ""
+                })
+            )
+        };
+
+        zip.file(
+            "library-backup.json",
+            JSON.stringify(metadata, null, 2)
+        );
+
+        zip.file(
+            "README.txt",
+            "3D Library Backup\n\nEnthält die Modell-Dateien sowie Metadaten, Tags und Druckwarteschlange.\nDie Modelle liegen unter models/.\n"
+        );
+
+        const modelFolder =
+            zip.folder("models");
+
+        let completed = 0;
+
+        for (const model of models) {
+
+            completed++;
+
+            button.querySelector(".v42-action-label").textContent =
+                `Backup ${completed}/${models.length}…`;
+
+            if (!model.filePath) continue;
+
+            try {
+
+                const {
+                    data,
+                    error
+                } =
+                    await supabase
+                        .storage
+                        .from(MODEL_BUCKET)
+                        .download(model.filePath);
+
+                if (error) throw error;
+                if (!data) throw new Error("Keine Datei zurückgegeben.");
+
+                const safeName =
+                    sanitizeBackupFilename(
+                        model.originalName ||
+                        model.name ||
+                        `${model.id}.3mf`
+                    );
+
+                modelFolder.file(
+                    `${model.id}_${safeName}`,
+                    data
+                );
+
+            } catch (error) {
+
+                console.warn(
+                    "Backup: Modell konnte nicht geladen werden:",
+                    model,
+                    error
+                );
+
+                zip.file(
+                    `errors/${model.id}.txt`,
+                    `Datei konnte beim Backup nicht heruntergeladen werden.\n${error?.message || error}`
+                );
+
+            }
+
+        }
+
+        button.querySelector(".v42-action-label").textContent =
+            "Backup wird gepackt…";
+
+        const blob =
+            await zip.generateAsync(
+                {
+                    type: "blob",
+                    compression: "STORE"
+                },
+                metadata => {
+                    if (metadata?.percent != null) {
+                        button.querySelector(".v42-action-label").textContent =
+                            `Backup ${Math.round(metadata.percent)} %…`;
+                    }
+                }
+            );
+
+        const url =
+            URL.createObjectURL(blob);
+
+        const link =
+            document.createElement("a");
+
+        link.href = url;
+        link.download =
+            `3D-Library-Backup-${new Date().toISOString().slice(0, 10)}.zip`;
+
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        setTimeout(
+            () => URL.revokeObjectURL(url),
+            5000
+        );
+
+        showToast(
+            "Backup erfolgreich erstellt."
+        );
+
+    } catch (error) {
+
+        console.error(
+            "Library Backup:",
+            error
+        );
+
+        showToast(
+            `Backup fehlgeschlagen: ${error?.message || "Unbekannter Fehler"}`,
+            "error"
+        );
+
+    } finally {
+
+        if (button) {
+            button.disabled = false;
+            button.querySelector(".v42-action-label").textContent =
+                "Library sichern";
+        }
+
+    }
+
+}
+
+
+function sanitizeBackupFilename(name) {
+
+    return String(name)
+        .replace(/[<>:"/\\|?*\x00-\x1F]/g, "_")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 180) || "model.3mf";
+
+}
+
+
+function setupV42Features() {
+
+    if (v42UiReady) return;
+
+    v42UiReady = true;
+
+    /* PWA-Sortierung erweitern. */
+    if (
+        sortSelect &&
+        !sortSelect.querySelector(
+            'option[value="lastOpened"]'
+        )
+    ) {
+
+        const option =
+            document.createElement("option");
+
+        option.value = "lastOpened";
+        option.textContent = "Zuletzt geöffnet";
+        sortSelect.appendChild(option);
+
+    }
+
+    setupThemeAndBackupControls();
+    setupMultiSelectControls();
+
+    let theme = "light";
+
+    try {
+        theme =
+            localStorage.getItem(
+                THEME_STORAGE_KEY
+            ) || "light";
+    } catch {}
+
+    applyTheme(theme);
+
+}
+
+
+/* =========================================================
    STARTUP
    ========================================================= */
 
@@ -8232,6 +9285,7 @@ async function boot() {
    START
    ========================================================= */
 
+setupV42Features();
 boot();
 
 

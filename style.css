@@ -4423,3 +4423,331 @@ button {
         touch-action: auto;
     }
 }
+
+
+/* =====================================================
+   V4.2 — PERSISTENT DARK MODE
+===================================================== */
+
+body.dark-mode {
+    --background: #111214;
+    --surface: #191b1f;
+    --surface-2: #23262b;
+    --border: #343840;
+    --text: #f3f4f6;
+    --muted: #aeb4bf;
+    --muted-2: #7d8490;
+    --accent: #f3f4f6;
+    --accent-light: #2b2e34;
+}
+
+body.dark-mode .sidebar,
+body.dark-mode .model-card,
+body.dark-mode .auth-card,
+body.dark-mode .small-modal,
+body.dark-mode .modal-window,
+body.dark-mode .plate-preview-window,
+body.dark-mode .queue-summary,
+body.dark-mode .sort-select,
+body.dark-mode .filter-tag,
+body.dark-mode .secondary-button,
+body.dark-mode .card-button,
+body.dark-mode .companion-sidebar-button {
+    background: var(--surface);
+    color: var(--text);
+    border-color: var(--border);
+}
+
+body.dark-mode .nav-button:hover,
+body.dark-mode .secondary-button:hover,
+body.dark-mode .card-button:hover,
+body.dark-mode .companion-sidebar-button:hover,
+body.dark-mode .tag-option:hover {
+    background: var(--surface-2);
+}
+
+body.dark-mode .drop-zone {
+    background: rgba(25, 27, 31, .72);
+    border-color: #40444c;
+}
+
+body.dark-mode .drop-zone:hover,
+body.dark-mode .drop-zone.dragging {
+    background: #202329;
+    border-color: #626874;
+}
+
+body.dark-mode .drop-icon {
+    background: #2a2e35;
+}
+
+body.dark-mode .filter-tag.active {
+    background: #f3f4f6;
+    border-color: #f3f4f6;
+    color: #17181b;
+}
+
+body.dark-mode .add-tag-button {
+    border-color: #555b65;
+    color: var(--muted);
+}
+
+body.dark-mode .manage-tags-button {
+    background: var(--surface);
+    border-color: var(--border);
+    color: var(--text);
+}
+
+body.dark-mode .manage-tags-button:hover {
+    background: var(--surface-2);
+}
+
+body.dark-mode .card-button,
+body.dark-mode .secondary-button,
+body.dark-mode .sort-select,
+body.dark-mode .search-wrapper input,
+body.dark-mode .modal-input,
+body.dark-mode .queue-notes-input,
+body.dark-mode .tag-input,
+body.dark-mode .tag-option,
+body.dark-mode .tag-picker-menu {
+    background: #1d2025;
+    color: var(--text);
+    border-color: var(--border);
+}
+
+body.dark-mode .search-wrapper input::placeholder,
+body.dark-mode .modal-input::placeholder,
+body.dark-mode .queue-notes-input::placeholder,
+body.dark-mode .tag-input::placeholder {
+    color: #767d88;
+}
+
+body.dark-mode .model-open-hint {
+    background: rgba(28, 30, 34, .92);
+    border-color: rgba(255,255,255,.08);
+    color: var(--text);
+}
+
+/* Vorschauen absichtlich hell lassen. */
+body.dark-mode .model-preview,
+body.dark-mode .queue-page-preview {
+    background:
+        radial-gradient(
+            circle at 50% 38%,
+            #f5f6f7 0%,
+            #e3e6e9 68%,
+            #d9dde1 100%
+        );
+}
+
+body.dark-mode .preview-placeholder {
+    color: #737984;
+}
+
+body.dark-mode .queue-notes-preview {
+    background: #25282e;
+    border-color: var(--border);
+}
+
+body.dark-mode .queue-page-item.drag-target {
+    background: #24272d;
+    border-color: #555b65;
+}
+
+body.dark-mode .auth-status.error {
+    color: #f18a8a;
+}
+
+body.dark-mode .auth-status.success {
+    color: #72cf91;
+}
+
+body.dark-mode .companion-code-area {
+    background: #24272d;
+}
+
+body.dark-mode .modal-backdrop {
+    background: rgba(0, 0, 0, .72);
+}
+
+/* =====================================================
+   V4.2 — 125% LOOK ON DESKTOP
+   Die App wird intern größer gesetzt, ohne den Browser-Zoom
+   zu verändern. Die PWA bleibt auf mobilen Geräten normal.
+===================================================== */
+
+@media (min-width: 701px) {
+    body {
+        width: 80%;
+        zoom: 1.25;
+    }
+}
+
+/* =====================================================
+   V4.2 — MULTISELECT
+===================================================== */
+
+.v42-action-button {
+    min-height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 650;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.v42-action-button:hover {
+    background: var(--surface-2);
+}
+
+.v42-action-icon {
+    font-size: 14px;
+    line-height: 1;
+}
+
+.bulk-selection-bar {
+    margin: 0 0 16px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.bulk-selection-left {
+    min-width: 0;
+    margin-right: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.bulk-selection-left strong {
+    font-size: 12px;
+}
+
+.bulk-selection-left span {
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.bulk-action-select {
+    min-width: 220px;
+    height: 38px;
+    padding: 0 10px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 11px;
+}
+
+.bulk-apply-button,
+.bulk-cancel-button {
+    height: 38px;
+}
+
+.model-card {
+    position: relative;
+}
+
+.model-selection-control {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 8;
+    width: 30px;
+    height: 30px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
+    background: rgba(255,255,255,.93);
+    border: 1px solid rgba(0,0,0,.10);
+    box-shadow: 0 5px 16px rgba(0,0,0,.12);
+}
+
+.multi-select-mode .model-selection-control {
+    display: flex;
+}
+
+.model-selection-input {
+    width: 17px;
+    height: 17px;
+    margin: 0;
+    accent-color: var(--text);
+    cursor: pointer;
+}
+
+.model-card.is-selected {
+    border-color: var(--text);
+    box-shadow: 0 0 0 2px rgba(128,128,128,.20);
+}
+
+body.dark-mode .v42-action-button,
+body.dark-mode .bulk-selection-bar,
+body.dark-mode .bulk-action-select {
+    background: var(--surface);
+    color: var(--text);
+    border-color: var(--border);
+}
+
+body.dark-mode .model-selection-control {
+    background: rgba(30,32,37,.94);
+    border-color: rgba(255,255,255,.12);
+}
+
+/* =====================================================
+   V4.2 — ÄNDERUNGSANZEIGE
+===================================================== */
+
+.model-change-info {
+    min-height: 15px;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--muted-2);
+    font-size: 9px;
+    font-weight: 600;
+}
+
+.model-change-dot {
+    width: 6px;
+    height: 6px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--success);
+}
+
+@media (max-width: 700px) {
+    .bulk-selection-bar {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .bulk-selection-left {
+        margin-right: 0;
+    }
+
+    .bulk-action-select {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .bulk-apply-button,
+    .bulk-cancel-button {
+        width: 100%;
+    }
+}
