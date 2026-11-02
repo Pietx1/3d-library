@@ -1515,9 +1515,10 @@ async function handleSendAuthEmail() {
             const {
                 error
             } =
-                await supabase.auth.updateUser({
-                    email
-                });
+                await supabase.auth.updateUser(
+                    { email },
+                    { emailRedirectTo: AUTH_REDIRECT_URL }
+                );
 
 
             if (error) {
@@ -9213,6 +9214,64 @@ function sanitizeBackupFilename(name) {
 }
 
 
+function setupEmailLinkButton() {
+
+    // Die E-Mail-Verknüpfung muss auch später aus der normalen
+    // Bibliotheksansicht erreichbar sein – nicht nur beim ersten Start.
+    if (!companionButton || document.getElementById("linkLibraryEmailButton")) {
+        return;
+    }
+
+    const button = document.createElement("button");
+    button.id = "linkLibraryEmailButton";
+    button.type = "button";
+    button.className = "companion-sidebar-button";
+    button.innerHTML = `
+        <span class="companion-sidebar-icon">✉</span>
+        <span>E-Mail verknüpfen</span>
+    `;
+
+    companionButton.insertAdjacentElement("beforebegin", button);
+
+    button.addEventListener("click", async () => {
+
+        // Aktuellen Benutzer direkt von Supabase lesen, ohne die Session
+        // abzumelden oder einen zweiten Account anzulegen.
+        const { data, error } = await supabase.auth.getUser();
+
+        if (error || !data?.user) {
+            showToast("Deine bestehende Library-Sitzung konnte nicht gelesen werden. Bitte bleib angemeldet und lade die Seite neu.", "error");
+            return;
+        }
+
+        currentUser = data.user;
+
+        if (currentUser.email) {
+            showToast(`Diese Library ist bereits mit ${currentUser.email} verknüpft.`);
+            return;
+        }
+
+        authTitle.textContent = "E-Mail mit deiner Library verknüpfen";
+        authDescription.textContent = "Gib deine E-Mail-Adresse ein. Sie wird mit deinem aktuell angemeldeten Account verbunden – deine Modelle und Warteschlange bleiben erhalten.";
+        passkeySignInButton.classList.add("hidden");
+        passkeyRegisterButton.classList.add("hidden");
+        openEmailSetupButton.classList.add("hidden");
+        authEmailArea.classList.remove("hidden");
+
+        const emailLabel = authEmailArea.querySelector('label[for="authEmailInput"]');
+        if (emailLabel) emailLabel.textContent = "Deine E-Mail-Adresse";
+
+        authEmailInput.value = "";
+        authHelpText.textContent = "Du erhältst eine Bestätigungs-E-Mail. Erst wenn du den Link darin öffnest, ist die Adresse verknüpft. Verwende danach dieselbe Adresse auf deinem Handy.";
+        setAuthStatus("Es wird dein bestehender Account verwendet. Es wird kein neuer Account erstellt.", "info");
+        showAuthModal();
+        authEmailInput.focus();
+
+    });
+
+}
+
+
 function setupV42Features() {
 
     if (v42UiReady) return;
@@ -9238,6 +9297,7 @@ function setupV42Features() {
 
     setupThemeAndBackupControls();
     setupMultiSelectControls();
+    setupEmailLinkButton();
 
     let theme = "light";
 
