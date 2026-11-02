@@ -1,4 +1,4 @@
-const CACHE_NAME = "3d-library-shell-v4-2-1";
+const CACHE_NAME = "3d-library-shell-v4-2-3";
 const APP_SHELL = [
   "./",
   "./index.html",

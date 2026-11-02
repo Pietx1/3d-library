@@ -1271,10 +1271,10 @@ function hideAuthModal() {
 async function showAnonymousSetup() {
 
     authTitle.textContent =
-        "Einmalig im Browser einrichten";
+        "E-Mail mit deiner Library verknüpfen";
 
     authDescription.textContent =
-        "Die Home-Bildschirm-App verwendet für die Anmeldung nur deinen Passkey. Die E-Mail-Einrichtung machst du einmalig in Safari.";
+        "Deine Library ist auf diesem Gerät noch nicht mit einer E-Mail-Adresse verknüpft. Verbinde jetzt deine bestehende Bibliothek, damit du dich auch auf anderen Geräten anmelden kannst.";
 
     passkeySignInButton.classList.add(
         "hidden"
@@ -1284,22 +1284,26 @@ async function showAnonymousSetup() {
         "hidden"
     );
 
-    openEmailSetupButton.classList.remove(
+    openEmailSetupButton.classList.add(
         "hidden"
     );
 
-    openEmailSetupButton.textContent =
-        "Einrichtung in Safari öffnen";
-
-    authEmailArea.classList.add(
+    authEmailArea.classList.remove(
         "hidden"
     );
+
+    const emailLabel =
+        authEmailArea.querySelector('label[for="authEmailInput"]');
+
+    if (emailLabel) {
+        emailLabel.textContent = "E-Mail-Adresse für deine Library";
+    }
 
     authHelpText.textContent =
-        "Öffne die 3D Library in Safari, verknüpfe dort einmalig deine E-Mail und registriere anschließend deinen Passkey. Danach kannst du die Home-Bildschirm-App ausschließlich mit Face ID/Passkey verwenden.";
+        "Gib deine E-Mail-Adresse ein. Du erhältst eine Bestätigungs-E-Mail, mit der diese bereits geöffnete Library verknüpft wird. Öffne den Bestätigungslink und melde dich danach auf anderen Geräten mit derselben Adresse an. Deine Modelle und Tags bleiben in diesem Account.";
 
     setAuthStatus(
-        "Für die Home-Bildschirm-App ist keine E-Mail-Anmeldung vorgesehen.",
+        "Einmalige Verknüpfung erforderlich – es wird kein neuer Library-Account angelegt.",
         "info"
     );
 
@@ -1366,12 +1370,22 @@ async function showPasskeyRegistration(user) {
         "hidden"
     );
 
-    authEmailArea.classList.add(
-        "hidden"
-    );
+    if (!user.email) {
+        authEmailArea.classList.remove("hidden");
+        const emailLabel = authEmailArea.querySelector('label[for="authEmailInput"]');
+        if (emailLabel) {
+            emailLabel.textContent = "E-Mail-Adresse mit diesem Account verknüpfen";
+        }
+        authHelpText.textContent =
+            "Verknüpfe zuerst eine E-Mail-Adresse mit diesem bereits angemeldeten Account. Danach kannst du dich auf weiteren Geräten mit dieser Adresse anmelden.";
+    } else {
+        authEmailArea.classList.add("hidden");
+    }
 
     setAuthStatus(
-        `Account ${user.email ? "bereit" : "bereit"}. Jetzt Passkey registrieren.`,
+        user.email
+            ? "Account bereit. Jetzt kannst du einen Passkey registrieren."
+            : "Verknüpfe eine E-Mail-Adresse, damit du dich auf anderen Geräten anmelden kannst.",
         "success"
     );
 
@@ -1494,7 +1508,8 @@ async function handleSendAuthEmail() {
     try {
 
         if (
-            currentUser?.is_anonymous
+            currentUser &&
+            (currentUser.is_anonymous || !currentUser.email)
         ) {
 
             const {
@@ -1511,7 +1526,7 @@ async function handleSendAuthEmail() {
 
 
             setAuthStatus(
-                "Fast geschafft. Öffne die Bestätigungs-E-Mail. Danach die Home-Bildschirm-App erneut öffnen und den Passkey registrieren.",
+                "Bestätigungs-E-Mail wurde angefordert. Öffne den Link in dieser E-Mail, um genau diese bestehende Library mit deiner Adresse zu verknüpfen. Erst danach kannst du dich auf dem neuen Handy anmelden.",
                 "success"
             );
 
@@ -1784,6 +1799,16 @@ function authEmailErrorMessage(error) {
     ) {
 
         return "Das Verknüpfen des anonymen Accounts ist in Supabase noch nicht aktiviert. Aktiviere dort Manual Linking und versuche es erneut.";
+
+    }
+
+
+    if (
+        lowerMessage.includes("signups not allowed for otp") ||
+        lowerMessage.includes("user not found")
+    ) {
+
+        return "Diese E-Mail-Adresse ist noch nicht mit deinem bestehenden Library-Account verknüpft. Öffne bitte die 3D Library auf dem PC, auf dem deine Modelle sichtbar sind, und verknüpfe dort zuerst deine E-Mail-Adresse. Danach funktioniert die Anmeldung auf dem Handy.";
 
     }
 
