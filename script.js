@@ -1310,10 +1310,10 @@ async function showAnonymousSetup() {
 async function showSignedOutAuth() {
 
     authTitle.textContent =
-        "Mit Passkey anmelden";
+        "Anmelden";
 
     authDescription.textContent =
-        "In der Home-Bildschirm-App meldest du dich mit Face ID, Touch ID oder deinem Passkey an.";
+        "Melde dich mit deiner E-Mail-Adresse oder einem bereits eingerichteten Passkey an. Verwende dieselbe E-Mail-Adresse wie auf deinem bisherigen Gerät.";
 
     passkeySignInButton.classList.remove(
         "hidden"
@@ -1327,9 +1327,15 @@ async function showSignedOutAuth() {
         "hidden"
     );
 
-    authEmailArea.classList.add(
+    // Auf einem neuen Gerät muss die Anmeldung auch ohne Passkey möglich sein.
+    // Das E-Mail-Feld ist deshalb direkt sichtbar und nicht hinter einer
+    // separaten Einrichtungsschaltfläche versteckt.
+    authEmailArea.classList.remove(
         "hidden"
     );
+
+    authHelpText.textContent =
+        "Wir senden dir einen einmaligen Anmeldelink. Es wird kein neuer Account angelegt – die Anmeldung funktioniert nur mit einer bereits verknüpften E-Mail-Adresse.";
 
     setAuthStatus(
         "",
@@ -1532,7 +1538,10 @@ async function handleSendAuthEmail() {
             await supabase.auth.signInWithOtp({
                 email,
                 options: {
-                    emailRedirectTo: redirectUrl
+                    emailRedirectTo: redirectUrl,
+                    // Verhindert, dass ein Tippfehler oder eine fremde Adresse
+                    // versehentlich einen neuen, leeren Library-Account erzeugt.
+                    shouldCreateUser: false
                 }
             });
 
@@ -1543,7 +1552,7 @@ async function handleSendAuthEmail() {
 
 
         setAuthStatus(
-            "E-Mail-Link gesendet. Öffne ihn zum Bestätigen. Danach diese Home-Bildschirm-App erneut öffnen und mit deinem Passkey anmelden.",
+            "Anmeldelink gesendet. Öffne die E-Mail auf diesem Handy und tippe auf den Link. Danach sollte deine bestehende Library geladen werden. Falls sich Safari öffnet, öffne anschließend auch die 3D Library-App erneut.",
             "success"
         );
 
