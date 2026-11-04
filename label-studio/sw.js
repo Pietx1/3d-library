@@ -1,9 +1,9 @@
-const CACHE_NAME = "filament-label-studio-v12";
+const CACHE_NAME = "filament-label-studio-v13";
 const ASSETS = [
   "./",
   "./index.html",
-  "./style.css?v=12",
-  "./app.js?v=12",
+  "./style.css?v=13",
+  "./app.js?v=13",
   "./manifest.webmanifest",
   "./icon.svg"
 ];
