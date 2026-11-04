@@ -23,7 +23,7 @@ if errorlevel 1 (
 )
 
 echo Erstelle Windows-Autostart ...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $folder='%~dp0'.TrimEnd(''); $pythonw=(Get-Command pythonw.exe -ErrorAction SilentlyContinue).Source; if(-not $pythonw){ throw 'pythonw.exe wurde nicht gefunden. Bitte Python mit pythonw installieren.' }; $startup=[Environment]::GetFolderPath('Startup'); $link=Join-Path $startup 'Filament Label Studio Druckdienst.lnk'; $ws=New-Object -ComObject WScript.Shell; $sc=$ws.CreateShortcut($link); $sc.TargetPath=$pythonw; $sc.Arguments=('""' + (Join-Path $folder 'bridge.py') + '""'); $sc.WorkingDirectory=$folder; $sc.Description='Lokaler Nelko P21 Druckdienst fuer die 3D Library'; $sc.Save(); Start-Process -FilePath $pythonw -ArgumentList ('""' + (Join-Path $folder 'bridge.py') + '""') -WorkingDirectory $folder"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $folder='%~dp0'.TrimEnd([char]92); $pythonw=(Get-Command pythonw.exe -ErrorAction SilentlyContinue).Source; if(-not $pythonw){ throw 'pythonw.exe wurde nicht gefunden. Bitte Python mit pythonw installieren.' }; $startup=[Environment]::GetFolderPath('Startup'); $link=Join-Path $startup 'Filament Label Studio Druckdienst.lnk'; $ws=New-Object -ComObject WScript.Shell; $sc=$ws.CreateShortcut($link); $sc.TargetPath=$pythonw; $sc.Arguments=('"' + (Join-Path $folder 'bridge.py') + '"'); $sc.WorkingDirectory=$folder; $sc.Description='Lokaler Nelko P21 Druckdienst fuer die 3D Library'; $sc.Save(); Start-Process -FilePath $pythonw -ArgumentList ('"' + (Join-Path $folder 'bridge.py') + '"') -WorkingDirectory $folder"
 if errorlevel 1 (
   echo Autostart konnte nicht eingerichtet werden.
   pause
