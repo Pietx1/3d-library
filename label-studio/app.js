@@ -478,12 +478,15 @@
 
   const PRINT_BRIDGE_URL = "http://127.0.0.1:8765";
   let printerStatusBusy = false;
+  let printerConnected = false;
 
-  function showPrinterStatus(state, message) {
+  function showPrinterStatus(state, message, hint = "") {
     const node = $("printerStatus");
     if (!node) return;
     node.textContent = message;
     node.dataset.state = state;
+    $("printerHint").textContent = hint;
+    $("printerDot").dataset.state = state;
   }
 
   async function bridgeRequest(path, options = {}) {
@@ -491,12 +494,44 @@
       cache: "no-store",
       ...options
     });
+    let payload = {};
+    try { payload = await response.json(); } catch (_) {}
     if (!response.ok) {
-      let detail = "";
-      try { detail = (await response.json()).error || ""; } catch (_) {}
-      throw new Error(detail || `Druckdienst antwortet mit ${response.status}`);
+      throw new Error(payload.error || `Druckdienst antwortet mit ${response.status}`);
     }
-    return response.json();
+    return payload;
+  }
+
+  function renderPrinterPorts(ports, preferred = "") {
+    const select = $("printerPort");
+    const previous = preferred || select.value;
+    select.replaceChildren();
+    if (!Array.isArray(ports) || ports.length === 0) {
+      const option = document.createElement("option");
+      option.value = "";
+      option.textContent = "Kein Bluetooth-COM-Port gefunden";
+      select.append(option);
+      select.disabled = true;
+      $("connectPrinter").disabled = true;
+      return;
+    }
+
+    ports.forEach((port) => {
+      const option = document.createElement("option");
+      option.value = port.device;
+      option.textContent = `${port.device} · ${port.description || "Serieller Anschluss"}`;
+      select.append(option);
+    });
+    select.disabled = false;
+    $("connectPrinter").disabled = false;
+    if (previous && ports.some((port) => port.device === previous)) {
+      select.value = previous;
+    } else {
+      const likely = ports.find((port) => /COM5/i.test(port.device))
+        || ports.find((port) => /nelko|p21|bluetooth/i.test(port.description || ""))
+        || ports[0];
+      select.value = likely.device;
+    }
   }
 
   async function refreshPrinterStatus() {
@@ -504,15 +539,52 @@
     printerStatusBusy = true;
     try {
       const status = await bridgeRequest("/status");
+      renderPrinterPorts(status.ports, status.port || "");
+      printerConnected = Boolean(status.connected);
       if (status.connected) {
-        showPrinterStatus("connected", `Nelko P21 verbunden · ${status.port}`);
+        showPrinterStatus("connected", `Nelko P21 verbunden · ${status.port}`, "Der Drucker ist bereit.");
+      } else if (status.ports && status.ports.length) {
+        showPrinterStatus("disconnected", "Druckdienst läuft – Drucker nicht verbunden", "Wähle den ausgehenden Bluetooth-COM-Port und klicke auf Verbinden.");
       } else {
-        showPrinterStatus("disconnected", "Druckdienst läuft · Nelko P21 nicht verbunden");
+        showPrinterStatus("disconnected", "Druckdienst läuft – kein COM-Port gefunden", "Prüfe die Bluetooth-Kopplung und die COM-Ports in Windows.");
       }
     } catch (error) {
-      showPrinterStatus("offline", "Druckdienst nicht gestartet · einmalig Windows-Autostart einrichten");
+      printerConnected = false;
+      renderPrinterPorts([]);
+      showPrinterStatus("offline", "Windows-Druckdienst nicht erreichbar", "Starte im Ordner windows-app die Datei START_DRUCKDIENST.bat. Das Fenster muss offen bleiben.");
     } finally {
       printerStatusBusy = false;
+    }
+  }
+
+  async function connectPrinter() {
+    const device = $("printerPort").value;
+    if (!device) {
+      toast("Windows hat keinen COM-Port gemeldet");
+      return;
+    }
+    const button = $("connectPrinter");
+    button.disabled = true;
+    button.textContent = "Verbinde …";
+    showPrinterStatus("checking", `Verbinde über ${device} …`, "Bluetooth-Verbindung wird geöffnet.");
+    try {
+      const result = await bridgeRequest("/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device })
+      });
+      printerConnected = Boolean(result.connected || result.ok);
+      if (!printerConnected) throw new Error(result.error || "Verbindung fehlgeschlagen");
+      showPrinterStatus("connected", `Nelko P21 verbunden · ${device}`, "Der Drucker ist bereit.");
+      toast(`Nelko P21 über ${device} verbunden`);
+    } catch (error) {
+      printerConnected = false;
+      showPrinterStatus("error", `Verbindung über ${device} fehlgeschlagen`, error.message);
+      toast(error.message || "Verbindung fehlgeschlagen");
+    } finally {
+      button.disabled = false;
+      button.textContent = "Verbinden";
+      refreshPrinterStatus();
     }
   }
 
@@ -529,21 +601,22 @@
 
     const button = $("printLabel");
     button.disabled = true;
-    button.textContent = "Drucke Etikett …";
+    button.classList.add("is-printing");
     try {
-      let status = await bridgeRequest("/status");
-      if (!status.connected) {
-        showPrinterStatus("disconnected", "Verbinde Nelko P21 …");
-        status = await bridgeRequest("/connect", {
+      if (!printerConnected) {
+        const device = $("printerPort").value;
+        if (!device) throw new Error("Kein COM-Port verfügbar. Starte den Druckdienst und suche erneut.");
+        showPrinterStatus("checking", `Verbinde über ${device} …`, "Bluetooth-Verbindung wird geöffnet.");
+        const connected = await bridgeRequest("/connect", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({})
+          body: JSON.stringify({ device })
         });
-      }
-      if (!status.connected && !status.ok) {
-        throw new Error(status.error || "Nelko P21 konnte nicht verbunden werden");
+        if (!connected.ok) throw new Error(connected.error || "Nelko P21 konnte nicht verbunden werden.");
+        printerConnected = true;
       }
 
+      showPrinterStatus("checking", "Etikett wird übertragen …", "Bitte den Drucker eingeschaltet lassen.");
       const pngDataUrl = createPrintCanvas(value).toDataURL("image/png");
       const result = await bridgeRequest("/print", {
         method: "POST",
@@ -552,14 +625,16 @@
       });
       if (!result.ok) throw new Error(result.error || "Druckauftrag fehlgeschlagen");
       rememberRecent(value);
-      showPrinterStatus("connected", `Nelko P21 verbunden · ${result.port}`);
+      printerConnected = true;
+      showPrinterStatus("connected", `Nelko P21 verbunden · ${result.port}`, "Etikett wurde an den Drucker gesendet.");
       toast("Etikett wurde an den Nelko P21 gesendet");
     } catch (error) {
-      showPrinterStatus("offline", error.message || "Drucken fehlgeschlagen");
+      printerConnected = false;
+      showPrinterStatus("error", "Drucken nicht möglich", error.message || "Bitte Verbindung prüfen.");
       toast(error.message || "Drucken fehlgeschlagen");
     } finally {
       button.disabled = false;
-      button.innerHTML = 'Etikett direkt drucken <span aria-hidden="true">→</span>';
+      button.classList.remove("is-printing");
       refreshPrinterStatus();
     }
   }
@@ -604,6 +679,8 @@
 
   $("exportLabel").addEventListener("click", exportLabel);
   $("printLabel").addEventListener("click", printDirectly);
+  $("connectPrinter").addEventListener("click", connectPrinter);
+  $("refreshPrinter").addEventListener("click", refreshPrinterStatus);
   refreshPrinterStatus();
   window.setInterval(refreshPrinterStatus, 5000);
 
