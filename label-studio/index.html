@@ -10,7 +10,7 @@
   <meta name="description" content="Filament-Etiketten im Format 40 × 14 mm erstellen.">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icon.svg">
-  <link rel="stylesheet" href="./style.css?v=11">
+  <link rel="stylesheet" href="./style.css?v=12">
   <title>Filament Label Studio</title>
 </head>
 <body>
@@ -123,11 +123,11 @@
       </div>
     </form>
   </dialog>
-  <script src="./app.js?v=11" defer></script>
+  <script src="./app.js?v=12" defer></script>
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./sw.js?v=10").catch(() => {});
+        navigator.serviceWorker.register("./sw.js?v=12").catch(() => {});
       });
     }
   </script>
