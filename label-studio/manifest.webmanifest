@@ -1,0 +1,12 @@
+{
+  "name": "Filament Label Studio",
+  "short_name": "Filament Label",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#101114",
+  "theme_color": "#101114",
+  "description": "Filament-Etiketten erstellen und als PNG exportieren.",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
