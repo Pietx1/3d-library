@@ -476,7 +476,47 @@
     return new File([blob], filename, { type: "image/png" });
   }
 
-  async function shareLabel() {
+  const PRINT_BRIDGE_URL = "http://127.0.0.1:8765";
+  let printerStatusBusy = false;
+
+  function showPrinterStatus(state, message) {
+    const node = $("printerStatus");
+    if (!node) return;
+    node.textContent = message;
+    node.dataset.state = state;
+  }
+
+  async function bridgeRequest(path, options = {}) {
+    const response = await fetch(`${PRINT_BRIDGE_URL}${path}`, {
+      cache: "no-store",
+      ...options
+    });
+    if (!response.ok) {
+      let detail = "";
+      try { detail = (await response.json()).error || ""; } catch (_) {}
+      throw new Error(detail || `Druckdienst antwortet mit ${response.status}`);
+    }
+    return response.json();
+  }
+
+  async function refreshPrinterStatus() {
+    if (printerStatusBusy) return;
+    printerStatusBusy = true;
+    try {
+      const status = await bridgeRequest("/status");
+      if (status.connected) {
+        showPrinterStatus("connected", `Nelko P21 verbunden · ${status.port}`);
+      } else {
+        showPrinterStatus("disconnected", "Druckdienst läuft · Nelko P21 nicht verbunden");
+      }
+    } catch (error) {
+      showPrinterStatus("offline", "Druckdienst nicht gestartet · einmalig Windows-Autostart einrichten");
+    } finally {
+      printerStatusBusy = false;
+    }
+  }
+
+  async function printDirectly() {
     const value = currentValues();
     if (!value.brand) {
       toast("Bitte einen Hersteller auswählen");
@@ -487,34 +527,41 @@
       return;
     }
 
-    let file;
+    const button = $("printLabel");
+    button.disabled = true;
+    button.textContent = "Drucke Etikett …";
     try {
-      file = createLabelFile(value);
-    } catch (error) {
-      console.error("PNG konnte nicht erstellt werden:", error);
-      toast("Etikett konnte nicht vorbereitet werden");
-      return;
-    }
-
-    if (navigator.share && (!navigator.canShare || navigator.canShare({ files: [file] }))) {
-      try {
-        await navigator.share({
-          files: [file],
-          title: "Filament-Etikett",
-          text: "Etikett für den Nelko P21"
+      let status = await bridgeRequest("/status");
+      if (!status.connected) {
+        showPrinterStatus("disconnected", "Verbinde Nelko P21 …");
+        status = await bridgeRequest("/connect", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({})
         });
-        rememberRecent(value);
-        toast("PNG bereit – in der Nelko-App aus Dateien/Bildern importieren");
-        return;
-      } catch (error) {
-        if (error && error.name === "AbortError") return;
-        console.warn("Teilen nicht möglich, wechsle zum Download:", error);
       }
-    }
+      if (!status.connected && !status.ok) {
+        throw new Error(status.error || "Nelko P21 konnte nicht verbunden werden");
+      }
 
-    downloadFile(file);
-    rememberRecent(value);
-    toast("PNG gespeichert – jetzt in der Nelko-App importieren");
+      const pngDataUrl = createPrintCanvas(value).toDataURL("image/png");
+      const result = await bridgeRequest("/print", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pngDataUrl, density: 10, copies: 1 })
+      });
+      if (!result.ok) throw new Error(result.error || "Druckauftrag fehlgeschlagen");
+      rememberRecent(value);
+      showPrinterStatus("connected", `Nelko P21 verbunden · ${result.port}`);
+      toast("Etikett wurde an den Nelko P21 gesendet");
+    } catch (error) {
+      showPrinterStatus("offline", error.message || "Drucken fehlgeschlagen");
+      toast(error.message || "Drucken fehlgeschlagen");
+    } finally {
+      button.disabled = false;
+      button.innerHTML = 'Etikett direkt drucken <span aria-hidden="true">→</span>';
+      refreshPrinterStatus();
+    }
   }
 
   function downloadFile(file) {
@@ -556,7 +603,9 @@
   });
 
   $("exportLabel").addEventListener("click", exportLabel);
-  $("shareLabel").addEventListener("click", shareLabel);
+  $("printLabel").addEventListener("click", printDirectly);
+  refreshPrinterStatus();
+  window.setInterval(refreshPrinterStatus, 5000);
 
   $("clearSaved").addEventListener("click", () => {
     recent = [];
