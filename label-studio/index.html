@@ -10,7 +10,7 @@
   <meta name="description" content="Filament-Etiketten im Format 40 × 14 mm erstellen.">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icon.svg">
-  <link rel="stylesheet" href="./style.css?v=12">
+  <link rel="stylesheet" href="./style.css?v=13">
   <title>Filament Label Studio</title>
 </head>
 <body>
@@ -86,10 +86,33 @@
         <p class="preview-caption">Lange Farbnamen werden automatisch angepasst.</p>
       </div>
 
-      <button class="primary-btn" id="exportLabel" type="button">
-        Etikett als PNG exportieren <span aria-hidden="true">↓</span>
+      <section class="printer-panel" aria-label="Nelko P21 Direktdruck">
+        <div class="printer-status-row">
+          <span class="printer-status-dot" id="printerDot" aria-hidden="true"></span>
+          <div class="printer-status-copy">
+            <strong id="printerStatus" data-state="checking" role="status">Windows-Druckdienst wird gesucht …</strong>
+            <small id="printerHint">Bitte kurz warten</small>
+          </div>
+        </div>
+        <label class="printer-port-label" for="printerPort">Bluetooth-COM-Port</label>
+        <div class="printer-connect-row">
+          <select id="printerPort" aria-label="Bluetooth-COM-Port">
+            <option value="">Erst Druckdienst starten</option>
+          </select>
+          <button class="printer-refresh-btn" id="refreshPrinter" type="button" aria-label="COM-Ports neu suchen" title="COM-Ports neu suchen">↻</button>
+          <button class="printer-connect-btn" id="connectPrinter" type="button">Verbinden</button>
+        </div>
+        <button class="print-cta" id="printLabel" type="button">
+          <span class="print-cta-icon" aria-hidden="true">▣</span>
+          <span>Etikett direkt drucken</span>
+          <span class="print-cta-arrow" aria-hidden="true">→</span>
+        </button>
+        <p class="printer-note">Der Druckdienst muss auf diesem Windows-PC laufen.</p>
+      </section>
+      <button class="export-btn" id="exportLabel" type="button">
+        PNG stattdessen exportieren <span aria-hidden="true">↓</span>
       </button>
-      <p class="helper-text">Neue Hersteller, Farben und Ausführungen kannst du über ＋ ergänzen. Deine Einträge werden auf diesem Gerät gespeichert. Für Bluetooth-Direktdruck auf den Nelko P21 bitte die Windows-App im Ordner windows-app starten.</p>
+      <p class="helper-text">Neue Hersteller, Farben und Ausführungen kannst du über ＋ ergänzen. Deine Einträge werden auf diesem Gerät gespeichert.</p>
     </section>
 
     <section class="recent-section" aria-label="Zuletzt exportierte Etiketten">
@@ -105,12 +128,6 @@
     <footer class="footer">FILAMENT LABEL STUDIO <span>•</span> 40 × 14 MM</footer>
   </main>
 
-  <div class="share-dock" role="region" aria-label="Etikett an Nelko übergeben">
-    <button class="secondary-btn" id="printLabel" type="button">
-      Etikett direkt drucken <span aria-hidden="true">→</span>
-    </button>
-    <p id="printerStatus" data-state="offline" role="status">Druckdienst wird gesucht …</p>
-  </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <dialog id="addDialog" class="add-dialog">
     <form id="addForm" method="dialog">
@@ -123,11 +140,11 @@
       </div>
     </form>
   </dialog>
-  <script src="./app.js?v=12" defer></script>
+  <script src="./app.js?v=13" defer></script>
   <script>
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./sw.js?v=12").catch(() => {});
+        navigator.serviceWorker.register("./sw.js?v=13").catch(() => {});
       });
     }
   </script>
