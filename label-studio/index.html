@@ -106,10 +106,10 @@
   </main>
 
   <div class="share-dock" role="region" aria-label="Etikett an Nelko übergeben">
-    <button class="secondary-btn" id="shareLabel" type="button">
-      PNG für Nelko-App vorbereiten <span aria-hidden="true">↗</span>
+    <button class="secondary-btn" id="printLabel" type="button">
+      Etikett direkt drucken <span aria-hidden="true">→</span>
     </button>
-    <p>Immer erreichbar · PNG anschließend in der Nelko-App importieren</p>
+    <p id="printerStatus" data-state="offline" role="status">Druckdienst wird gesucht …</p>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <dialog id="addDialog" class="add-dialog">
