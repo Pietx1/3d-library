@@ -129,9 +129,6 @@ const queueEmpty =
 const clearQueueButton =
     document.getElementById("clearQueueButton");
 
-const queueBackButton =
-    document.getElementById("queueBackButton");
-
 
 /* Tags */
 
@@ -6261,14 +6258,6 @@ function createQueueRow(
             ×${entry.quantity}
         </div>
 
-        <button
-            class="queue-open-bambu"
-            type="button"
-            title="In Bambu Studio öffnen"
-            ${entry.model ? "" : "disabled"}
-        >
-            In Bambu Studio öffnen
-        </button>
 
         <button
             class="queue-edit"
@@ -6288,31 +6277,6 @@ function createQueueRow(
         </button>
 
     `;
-
-
-    const openBambuButton =
-        row.querySelector(
-            ".queue-open-bambu"
-        );
-
-    openBambuButton.addEventListener(
-        "pointerdown",
-        event => event.stopPropagation()
-    );
-
-    openBambuButton.addEventListener(
-        "click",
-        event => {
-            event.stopPropagation();
-
-            if (entry.model) {
-                openInBambuStudio(
-                    entry.model,
-                    { trackOpened: false }
-                );
-            }
-        }
-    );
 
 
     const editButton =
@@ -7089,14 +7053,11 @@ closeCompanion.addEventListener(
    ========================================================= */
 
 function openInBambuStudio(
-    model,
-    { trackOpened = true } = {}
+    model
 ) {
 
-    if (trackOpened) {
-        rememberModelOpened(model.id);
-        renderModels();
-    }
+    rememberModelOpened(model.id);
+    renderModels();
 
     const protocolUrl =
         `library3d://open?model=${encodeURIComponent(
@@ -7439,13 +7400,6 @@ mobileQueueNav.addEventListener(
     "click",
     showQueue
 );
-
-if (queueBackButton) {
-    queueBackButton.addEventListener(
-        "click",
-        showLibrary
-    );
-}
 
 
 function showLibrary() {

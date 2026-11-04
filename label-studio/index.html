@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101114">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Filament Label">
+  <meta name="description" content="Filament-Etiketten im Format 40 × 14 mm erstellen.">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icon.svg">
+  <link rel="stylesheet" href="./style.css?v=11">
+  <title>Filament Label Studio</title>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="brand-mark" aria-hidden="true">FL</div>
+      <div class="topbar-copy">
+        <p class="eyebrow">FILAMENT LABEL</p>
+        <h1>Etikett erstellen</h1>
+      <a class="library-back-link" href="../" aria-label="Zurück zur 3D Library">← 3D Library</a>
+      </div>
+    </header>
+
+    <section class="form-card" aria-label="Etikett konfigurieren">
+      <div class="field">
+        <label for="brand">Hersteller</label>
+        <div class="select-add">
+          <select id="brand" aria-label="Hersteller"></select>
+          <button class="add-btn" type="button" data-add="brand" aria-label="Hersteller hinzufügen">＋</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="material">Material</label>
+        <div class="select-add">
+          <select id="material" aria-label="Material">
+            <option>PLA+</option>
+            <option>PLA</option>
+            <option>PETG</option>
+            <option>PETG HF</option>
+            <option>TPU</option>
+            <option>ASA</option>
+            <option>ABS</option>
+          </select>
+          <button class="add-btn" type="button" data-add="material" aria-label="Material hinzufügen">＋</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="color">Farbbezeichnung</label>
+        <div class="select-add">
+          <select id="color" aria-label="Farbbezeichnung"></select>
+          <button class="add-btn" type="button" data-add="color" aria-label="Farbbezeichnung hinzufügen">＋</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="finish">Ausführung</label>
+        <div class="select-add">
+          <select id="finish" aria-label="Ausführung"></select>
+          <button class="add-btn" type="button" data-add="finish" aria-label="Ausführung hinzufügen">＋</button>
+        </div>
+      </div>
+
+      <div class="preview-wrap">
+        <div class="preview-heading">
+          <span>ETIKETT-VORSCHAU</span>
+          <span>40 × 14 mm · horizontal</span>
+        </div>
+        <div class="label-stage">
+          <div class="print-label" id="labelPreview" aria-label="Etikettenvorschau">
+            <div class="label-brand" id="previewBrand">SUNLU</div>
+            <div class="label-divider" aria-hidden="true"></div>
+            <div class="label-content">
+              <div class="material-line">
+                <strong id="previewMaterial">PLA</strong>
+                <span id="previewFinish">Basic</span>
+              </div>
+              <div class="label-color" id="previewColor">Farbe auswählen</div>
+            </div>
+          </div>
+        </div>
+        <p class="preview-caption">Lange Farbnamen werden automatisch angepasst.</p>
+      </div>
+
+      <button class="primary-btn" id="exportLabel" type="button">
+        Etikett als PNG exportieren <span aria-hidden="true">↓</span>
+      </button>
+      <p class="helper-text">Neue Hersteller, Farben und Ausführungen kannst du über ＋ ergänzen. Deine Einträge werden auf diesem Gerät gespeichert. Für Bluetooth-Direktdruck auf den Nelko P21 bitte die Windows-App im Ordner windows-app starten.</p>
+    </section>
+
+    <section class="recent-section" aria-label="Zuletzt exportierte Etiketten">
+      <div class="section-heading">
+        <h2>Zuletzt exportierte Etiketten</h2>
+        <button id="clearSaved" class="clear-btn" type="button">Leeren</button>
+      </div>
+      <div id="savedList" class="saved-list">
+        <p class="empty-state">Hier erscheinen deine zuletzt exportierten Etiketten.</p>
+      </div>
+    </section>
+
+    <footer class="footer">FILAMENT LABEL STUDIO <span>•</span> 40 × 14 MM</footer>
+  </main>
+
+  <div class="share-dock" role="region" aria-label="Etikett an Nelko übergeben">
+    <button class="secondary-btn" id="shareLabel" type="button">
+      PNG für Nelko-App vorbereiten <span aria-hidden="true">↗</span>
+    </button>
+    <p>Immer erreichbar · PNG anschließend in der Nelko-App importieren</p>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <dialog id="addDialog" class="add-dialog">
+    <form id="addForm" method="dialog">
+      <h2 id="addDialogTitle">Eintrag hinzufügen</h2>
+      <label for="newOptionInput">Name</label>
+      <input id="newOptionInput" type="text" maxlength="40" autocomplete="off" autocapitalize="words" placeholder="Name eingeben" required>
+      <div class="dialog-actions">
+        <button type="button" class="dialog-cancel" id="cancelAdd">Abbrechen</button>
+        <button type="submit" class="dialog-save">Hinzufügen</button>
+      </div>
+    </form>
+  </dialog>
+  <script src="./app.js?v=11" defer></script>
+  <script>
+    if ("serviceWorker" in navigator && location.protocol !== "file:") {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js?v=10").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

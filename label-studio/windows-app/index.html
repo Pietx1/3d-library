@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101114">
+  <meta name="description" content="Filament-Etiketten im Format 40 × 14 mm erstellen.">
+  <link rel="stylesheet" href="./style.css">
+  <title>Filament Label Studio</title>
+</head>
+<body>
+  <main class="app-shell">
+    <header class="topbar">
+      <div class="brand-mark" aria-hidden="true">FL</div>
+      <div class="topbar-copy">
+        <p class="eyebrow">FILAMENT LABEL</p>
+        <h1>Etikett erstellen</h1>
+      </div>
+      <a class="library-back-link" href="../" aria-label="Zurück zur 3D Library">← 3D Library</a>
+      <button class="printer-status-btn" id="connectPrinter" type="button" title="Nelko P21 verbinden">
+        <span class="printer-status-dot" id="printerStatusDot"></span>
+        <span id="printerStatusText">Drucker suchen …</span>
+      </button>
+    </header>
+
+    <section class="form-card" aria-label="Etikett konfigurieren">
+      <div class="field">
+        <label for="brand">Hersteller</label>
+        <div class="select-add">
+          <select id="brand" aria-label="Hersteller"></select>
+          <button class="add-btn" type="button" data-add="brand" aria-label="Hersteller hinzufügen">＋</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="material">Material</label>
+        <div class="select-add">
+          <select id="material" aria-label="Material">
+            <option>PLA</option>
+            <option>PLA+</option>
+            <option>PETG</option>
+            <option>PETG HF</option>
+            <option>TPU</option>
+            <option>ASA</option>
+            <option>ABS</option>
+            <option>Andere</option>
+          </select>
+          <button class="add-btn" type="button" data-add="material" aria-label="Material hinzufügen">＋</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="color">Farbbezeichnung</label>
+        <div class="select-add">
+          <select id="color" aria-label="Farbbezeichnung"></select>
+          <button class="add-btn" type="button" data-add="color" aria-label="Farbbezeichnung hinzufügen">＋</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="finish">Ausführung</label>
+        <div class="select-add">
+          <select id="finish" aria-label="Ausführung"></select>
+          <button class="add-btn" type="button" data-add="finish" aria-label="Ausführung hinzufügen">＋</button>
+        </div>
+      </div>
+
+      <div class="preview-wrap">
+        <div class="preview-heading">
+          <span>ETIKETT-VORSCHAU</span>
+          <span>40 × 14 mm · horizontal</span>
+        </div>
+        <div class="label-stage">
+          <div class="print-label" id="labelPreview" aria-label="Etikettenvorschau">
+            <div class="label-brand" id="previewBrand">SUNLU</div>
+            <div class="label-divider" aria-hidden="true"></div>
+            <div class="label-content">
+              <div class="material-line">
+                <strong id="previewMaterial">PLA</strong>
+                <span id="previewFinish">Basic</span>
+              </div>
+              <div class="label-color" id="previewColor">Farbe auswählen</div>
+            </div>
+          </div>
+        </div>
+        <p class="preview-caption">Lange Farbnamen werden automatisch angepasst.</p>
+      </div>
+
+
+    </section>
+
+
+
+    <footer class="footer">FILAMENT LABEL STUDIO <span>•</span> 40 × 14 MM</footer>
+  </main>
+
+  <div class="share-dock" role="region" aria-label="Direktdruck">
+    <button class="primary-btn" id="printLabel" type="button">
+      Etikett direkt drucken <span aria-hidden="true">→</span>
+    </button>
+    <p id="printerStatusLine">Nelko P21 · Verbindung wird vorbereitet</p>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <dialog id="printerDialog" class="add-dialog">
+    <form method="dialog">
+      <h2>NELKO P21 verbinden</h2>
+      <label for="printerPort">Bluetooth-COM-Port</label>
+      <select id="printerPort" data-native-dropdown aria-label="Bluetooth-COM-Port">
+        <option value="">Ports werden gesucht …</option>
+      </select>
+      <div class="dialog-actions">
+        <button type="button" class="dialog-cancel" id="refreshPrinterPorts">Aktualisieren</button>
+        <button type="button" class="dialog-save" id="connectPrinterPort">Verbinden</button>
+      </div>
+      <button type="button" class="dialog-cancel printer-dialog-close" id="closePrinterDialog">Schließen</button>
+    </form>
+  </dialog>
+
+  <dialog id="addDialog" class="add-dialog">
+    <form id="addForm" method="dialog">
+      <h2 id="addDialogTitle">Eintrag hinzufügen</h2>
+      <label for="newOptionInput">Name</label>
+      <input id="newOptionInput" type="text" maxlength="40" autocomplete="off" autocapitalize="words" placeholder="Name eingeben" required>
+      <div class="dialog-actions">
+        <button type="button" class="dialog-cancel" id="cancelAdd">Abbrechen</button>
+        <button type="submit" class="dialog-save">Hinzufügen</button>
+      </div>
+    </form>
+  </dialog>
+  <script src="./app.js" defer></script>
+</body>
+</html>
